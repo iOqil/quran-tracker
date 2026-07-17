@@ -3,6 +3,7 @@ import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import path from 'path';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -648,6 +649,14 @@ app.get('/api/stats', authenticateUser, async (req, res) => {
     console.error('Error fetching stats:', error);
     res.status(500).json({ error: 'Failed to fetch stats' });
   }
+});
+
+// Serve client static assets in production
+const clientDistPath = path.join(__dirname, '../../client/dist');
+app.use(express.static(clientDistPath));
+
+app.get('*', (req, res) => {
+  res.sendFile(path.join(clientDistPath, 'index.html'));
 });
 
 app.listen(PORT, () => {
