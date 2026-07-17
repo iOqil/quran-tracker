@@ -8,6 +8,8 @@ RUN npm run build
 
 # Stage 2: Build the Node Express server
 FROM node:20-alpine AS server-builder
+# Install OpenSSL and libc compatibility package required by Prisma binary engines in Alpine
+RUN apk add --no-cache openssl libc6-compat
 WORKDIR /app/server
 COPY server/package*.json ./
 RUN npm install
@@ -17,6 +19,8 @@ RUN npm run build
 
 # Stage 3: Runtime
 FROM node:20-alpine AS runner
+# Install OpenSSL and libc compatibility package required by Prisma binary engines in Alpine
+RUN apk add --no-cache openssl libc6-compat
 WORKDIR /app
 
 # Copy server package and build files from builder
