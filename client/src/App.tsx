@@ -985,16 +985,7 @@ function App() {
             </button>
           </form>
 
-          {/* Quick credentials hints */}
-          {authMode === 'login' && (
-            <div className="auth-demo-hints">
-              <p>💡 Test uchun hisoblar:</p>
-              <ul>
-                <li>Admin: <code>admin</code> / paroli: <code>admin</code></li>
-                <li>User: <code>sevara</code> / paroli: <code>password123</code></li>
-              </ul>
-            </div>
-          )}
+
 
           <div className="auth-footer-toggle">
             {authMode === 'login' ? (
