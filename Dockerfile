@@ -38,5 +38,5 @@ EXPOSE 5000
 ENV PORT=5000
 ENV NODE_ENV=production
 
-# Start command: runs Prisma migration deploy automatically, then starts the Express server
-CMD ["sh", "-c", "cd server && npx prisma migrate deploy && node dist/index.js"]
+# Start command: pushes the schema to MySQL database automatically, then starts the Express server
+CMD ["sh", "-c", "cd server && npx prisma db push && node dist/index.js"]
