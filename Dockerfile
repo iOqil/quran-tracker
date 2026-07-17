@@ -38,5 +38,5 @@ EXPOSE 5000
 ENV PORT=5000
 ENV NODE_ENV=production
 
-# Start command: pushes the schema to MySQL database automatically, then starts the Express server
-CMD ["sh", "-c", "cd server && npx prisma db push && node dist/index.js"]
+# Start command: pushes the schema to MySQL database automatically, seeds initial data, then starts the Express server
+CMD ["sh", "-c", "cd server && npx prisma db push && npx tsx prisma/seed.ts && node dist/index.js"]
