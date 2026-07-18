@@ -1621,12 +1621,12 @@ body {
   z-index: 10;
 }
 
-/* Contribution Colors */
-.level-0 { background-color: #EBEDF0; }
-.level-1 { background-color: #9BE9A8; }
-.level-2 { background-color: #40C463; }
-.level-3 { background-color: #30A14E; }
-.level-4 { background-color: #216E39; }
+/* Contribution Colors - Brand Pink Theme */
+.level-0 { background-color: #F3F4F6; }
+.level-1 { background-color: #FCDCE5; }
+.level-2 { background-color: #FAA5C0; }
+.level-3 { background-color: #E57399; }
+.level-4 { background-color: #D84C7B; }
 
 /* Todo Widget Styling */
 .todo-widget-card {
