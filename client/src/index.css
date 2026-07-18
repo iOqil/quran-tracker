@@ -420,6 +420,8 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
+  flex: 1;
 }
 
 .surah-number-badge {
@@ -433,22 +435,31 @@ body {
   justify-content: center;
   font-size: 13px;
   font-weight: 700;
+  flex-shrink: 0;
 }
 
 .surah-info {
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .surah-name {
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
   color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .surah-progress-text {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .surah-card-action {
@@ -1376,16 +1387,9 @@ body {
   }
 
   .surahs-grid-desktop {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     padding: 0;
     gap: 16px;
-  }
-
-  /* Wide screens (min-width: 1440px): 4-columns grid */
-  @media (min-width: 1440px) {
-    .surahs-grid-desktop {
-      grid-template-columns: repeat(4, 1fr);
-    }
   }
 
   /* Stats Tab split page layout */

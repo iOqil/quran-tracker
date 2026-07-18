@@ -1551,12 +1551,10 @@ function App() {
                             <div className="surah-number-badge">{surah.number}</div>
                             <div className="surah-info">
                               <span className="surah-name">{surah.name}</span>
-                              <span className="surah-juz-badge">{surah.juz}-juz</span>
+                              <span className="surah-progress-text">
+                                {surah.memorizedCount} / {surah.verseCount} oyat ({surah.juz}-juz)
+                              </span>
                             </div>
-                          </div>
-
-                          <div className="surah-stats-text">
-                            {surah.memorizedCount} / {surah.verseCount} oyat
                           </div>
 
                           <div className="surah-card-action">
