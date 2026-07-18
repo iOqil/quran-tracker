@@ -18,7 +18,8 @@ import {
   Filter,
   KeyRound,
   LogOut,
-  Users
+  Users,
+  CheckSquare
 } from 'lucide-react';
 
 // Reusable Circular Progress SVG Component
@@ -278,7 +279,7 @@ function App() {
   const [authError, setAuthError] = useState('');
 
   // Core application states
-  const [activeTab, setActiveTab] = useState<'list' | 'stats' | 'reminders' | 'profile' | 'users'>('list');
+  const [activeTab, setActiveTab] = useState<'list' | 'todos' | 'stats' | 'reminders' | 'profile' | 'users'>('list');
   const [surahs, setSurahs] = useState<Surah[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [filter, setFilter] = useState<'all' | 'memorized' | 'remaining'>('all');
@@ -1082,7 +1083,7 @@ function App() {
           </button>
         </form>
 
-        <div className="todo-list-scroll">
+        <div className="todo-list-scroll" style={{ maxHeight: 'none', overflowY: 'visible' }}>
           {todos.length > 0 ? (
             <div className="todo-items-list">
               {todos.map((todo) => (
@@ -1096,7 +1097,8 @@ function App() {
                     <span className="todo-text">{todo.text}</span>
                   </label>
                   <button
-                    className="admin-delete-btn todo-del-btn"
+                    className="admin-delete-btn"
+                    style={{ padding: '6px', border: 'none', color: '#DC2626', backgroundColor: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                     onClick={() => handleDeleteTodo(todo.id)}
                     title="Vazifani o'chirish"
                   >
@@ -1106,7 +1108,7 @@ function App() {
               ))}
             </div>
           ) : (
-            <p className="todo-empty-text">Rejalar yo'q. Yangi vazifa qo'shing.</p>
+            <p className="todo-empty-text">Kunlik vazifalar ro'yxati bo'sh. Rejalar qo'shish uchun yuqoridagi maydondan foydalaning.</p>
           )}
         </div>
       </div>
@@ -1306,6 +1308,13 @@ function App() {
             Jadval
           </button>
           <button
+            className={`sidebar-nav-item ${activeTab === 'todos' ? 'active' : ''}`}
+            onClick={() => setActiveTab('todos')}
+          >
+            <CheckSquare size={18} />
+            Kunlik Reja
+          </button>
+          <button
             className={`sidebar-nav-item ${activeTab === 'stats' ? 'active' : ''}`}
             onClick={() => setActiveTab('stats')}
           >
@@ -1358,6 +1367,7 @@ function App() {
             <h1 className="main-header-title">Qalbimdagi Qur'on</h1>
             <p className="main-header-subtitle">
               {activeTab === 'list' && 'Suralar Ro\'yxati'}
+              {activeTab === 'todos' && 'Kunlik Reja va Vazifalar'}
               {activeTab === 'stats' && 'Mening Progress Statistikam'}
               {activeTab === 'reminders' && 'Takrorlash va Eslatmalar'}
               {activeTab === 'profile' && 'Akkaunt Sozlamalari'}
@@ -1412,193 +1422,191 @@ function App() {
             {/* Heatmap Widget */}
             {renderHeatmap()}
 
-            <div className="dashboard-split-layout">
-              <div className="dashboard-left-panel">
-                {/* Admin create surah card */}
-                {adminMode && currentUser.role === 'admin' && (
-                  <div className="admin-card" style={{ marginBottom: '20px' }}>
-                    <h3 className="admin-form-title">Yangi Sura Yozib Olish (Global)</h3>
-                    <form onSubmit={handleCreateSurah} className="admin-form-layout">
-                      <div className="admin-form-row">
-                        <div className="admin-form-group">
-                          <label>Sura Nomeri (1-114)</label>
-                          <input
-                            type="number"
-                            className="admin-input"
-                            placeholder="Masalan: 1"
-                            value={adminNumber}
-                            onChange={(e) => setAdminNumber(e.target.value)}
-                          />
-                        </div>
-                        <div className="admin-form-group">
-                          <label>Sura Nomi</label>
-                          <input
-                            type="text"
-                            className="admin-input"
-                            placeholder="Avtomatik to'ldiriladi"
-                            value={adminName}
-                            onChange={(e) => setAdminName(e.target.value)}
-                          />
-                        </div>
-                        <div className="admin-form-group">
-                          <label>Oyatlar Soni</label>
-                          <input
-                            type="number"
-                            className="admin-input"
-                            placeholder="Avtomatik to'ldiriladi"
-                            value={adminVerses}
-                            onChange={(e) => setAdminVerses(e.target.value)}
-                          />
-                        </div>
-                        <div className="admin-form-group">
-                          <label>Juz (1-30)</label>
-                          <select
-                            className="admin-select"
-                            value={adminJuz}
-                            onChange={(e) => setAdminJuz(e.target.value)}
-                          >
-                            {Array.from({ length: 30 }, (_, i) => (
-                              <option key={i + 1} value={i + 1}>
-                                {i + 1}-juz
-                              </option>
-                            ))}
-                          </select>
+            {/* Admin create surah card */}
+            {adminMode && currentUser.role === 'admin' && (
+              <div className="admin-card" style={{ marginBottom: '20px' }}>
+                <h3 className="admin-form-title">Yangi Sura Yozib Olish (Global)</h3>
+                <form onSubmit={handleCreateSurah} className="admin-form-layout">
+                  <div className="admin-form-row">
+                    <div className="admin-form-group">
+                      <label>Sura Nomeri (1-114)</label>
+                      <input
+                        type="number"
+                        className="admin-input"
+                        placeholder="Masalan: 1"
+                        value={adminNumber}
+                        onChange={(e) => setAdminNumber(e.target.value)}
+                      />
+                    </div>
+                    <div className="admin-form-group">
+                      <label>Sura Nomi</label>
+                      <input
+                        type="text"
+                        className="admin-input"
+                        placeholder="Avtomatik to'ldiriladi"
+                        value={adminName}
+                        onChange={(e) => setAdminName(e.target.value)}
+                      />
+                    </div>
+                    <div className="admin-form-group">
+                      <label>Oyatlar Soni</label>
+                      <input
+                        type="number"
+                        className="admin-input"
+                        placeholder="Avtomatik to'ldiriladi"
+                        value={adminVerses}
+                        onChange={(e) => setAdminVerses(e.target.value)}
+                      />
+                    </div>
+                    <div className="admin-form-group">
+                      <label>Juz (1-30)</label>
+                      <select
+                        className="admin-select"
+                        value={adminJuz}
+                        onChange={(e) => setAdminJuz(e.target.value)}
+                      >
+                        {Array.from({ length: 30 }, (_, i) => (
+                          <option key={i + 1} value={i + 1}>
+                            {i + 1}-juz
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {formError && <p className="form-error-msg">{formError}</p>}
+                  {formSuccess && <p className="form-success-msg">{formSuccess}</p>}
+
+                  <button type="submit" className="admin-submit-btn">
+                    Sura va Checkboxlarni Generatsiya Qilish
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {/* Filters and Search toolbar */}
+            <div className="toolbar-layout" style={{ marginBottom: '20px' }}>
+              <div className="search-box-wrapper">
+                <Search size={18} className="search-icon" />
+                <input
+                  type="text"
+                  placeholder="Sura nomi yoki raqamini qidirish..."
+                  className="admin-input search-input"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+
+              <div className="filter-dropdown-wrapper">
+                <Filter size={16} className="filter-icon" />
+                <select
+                  className="admin-select filter-select"
+                  value={juzFilter}
+                  onChange={(e) => setJuzFilter(e.target.value)}
+                >
+                  <option value="all">Barcha Juzlar</option>
+                  {Array.from({ length: 30 }, (_, i) => (
+                    <option key={i + 1} value={i + 1}>
+                      Juz {i + 1}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="filters-bar-buttons">
+                <button
+                  className={`filter-btn ${filter === 'all' ? 'active' : ''}`}
+                  onClick={() => setFilter('all')}
+                >
+                  Barchasi
+                </button>
+                <button
+                  className={`filter-btn ${filter === 'memorized' ? 'active' : ''}`}
+                  onClick={() => setFilter('memorized')}
+                >
+                  Yodlangan
+                </button>
+                <button
+                  className={`filter-btn ${filter === 'remaining' ? 'active' : ''}`}
+                  onClick={() => setFilter('remaining')}
+                >
+                  Qolgan
+                </button>
+              </div>
+            </div>
+
+            {/* Surahs Grid Section */}
+            <h2 className="surah-section-title">Suralar Ro'yxati</h2>
+            
+            <div className="surahs-grid-desktop" style={{ marginTop: '12px' }}>
+              {filteredSurahs.length > 0 ? (
+                filteredSurahs.map((surah) => {
+                  const percent = (surah.memorizedCount / (surah.verseCount || 1)) * 100;
+                  return (
+                    <div
+                      key={surah.id}
+                      className={`surah-card ${surah.isCompleted ? 'completed' : ''}`}
+                      onClick={() => handleOpenSurah(surah.id)}
+                    >
+                      {!surah.isCompleted && (
+                        <div
+                          className="surah-card-progress-bg"
+                          style={{ width: `${percent}%` }}
+                        />
+                      )}
+
+                      <div className="surah-card-content">
+                        <div className="surah-number-badge">{surah.number}</div>
+                        <div className="surah-info">
+                          <span className="surah-name">{surah.name}</span>
+                          <span className="surah-progress-text">
+                            {surah.memorizedCount} / {surah.verseCount} oyat ({surah.juz}-juz)
+                          </span>
                         </div>
                       </div>
 
-                      {formError && <p className="form-error-msg">{formError}</p>}
-                      {formSuccess && <p className="form-success-msg">{formSuccess}</p>}
-
-                      <button type="submit" className="admin-submit-btn">
-                        Sura va Checkboxlarni Generatsiya Qilish
-                      </button>
-                    </form>
-                  </div>
-                )}
-
-                {/* Filters and Search toolbar */}
-                <div className="toolbar-layout" style={{ marginBottom: '20px' }}>
-                  <div className="search-box-wrapper">
-                    <Search size={18} className="search-icon" />
-                    <input
-                      type="text"
-                      placeholder="Sura nomi yoki raqamini qidirish..."
-                      className="admin-input search-input"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="filter-dropdown-wrapper">
-                    <Filter size={16} className="filter-icon" />
-                    <select
-                      className="admin-select filter-select"
-                      value={juzFilter}
-                      onChange={(e) => setJuzFilter(e.target.value)}
-                    >
-                      <option value="all">Barcha Juzlar</option>
-                      {Array.from({ length: 30 }, (_, i) => (
-                        <option key={i + 1} value={i + 1}>
-                          Juz {i + 1}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="filters-bar-buttons">
-                    <button
-                      className={`filter-btn ${filter === 'all' ? 'active' : ''}`}
-                      onClick={() => setFilter('all')}
-                    >
-                      Barchasi
-                    </button>
-                    <button
-                      className={`filter-btn ${filter === 'memorized' ? 'active' : ''}`}
-                      onClick={() => setFilter('memorized')}
-                    >
-                      Yodlangan
-                    </button>
-                    <button
-                      className={`filter-btn ${filter === 'remaining' ? 'active' : ''}`}
-                      onClick={() => setFilter('remaining')}
-                    >
-                      Qolgan
-                    </button>
-                  </div>
-                </div>
-
-                {/* Surahs Grid Section */}
-                <h2 className="surah-section-title">Suralar Ro'yxati</h2>
-                
-                <div className="surahs-grid-desktop" style={{ marginTop: '12px' }}>
-                  {filteredSurahs.length > 0 ? (
-                    filteredSurahs.map((surah) => {
-                      const percent = (surah.memorizedCount / (surah.verseCount || 1)) * 100;
-                      return (
-                        <div
-                          key={surah.id}
-                          className={`surah-card ${surah.isCompleted ? 'completed' : ''}`}
-                          onClick={() => handleOpenSurah(surah.id)}
-                        >
-                          {!surah.isCompleted && (
-                            <div
-                              className="surah-card-progress-bg"
-                              style={{ width: `${percent}%` }}
-                            />
-                          )}
-
-                          <div className="surah-card-content">
-                            <div className="surah-number-badge">{surah.number}</div>
-                            <div className="surah-info">
-                              <span className="surah-name">{surah.name}</span>
-                              <span className="surah-progress-text">
-                                {surah.memorizedCount} / {surah.verseCount} oyat ({surah.juz}-juz)
-                              </span>
-                            </div>
+                      <div className="surah-card-action">
+                        {surah.isCompleted && (
+                          <div className="completed-check-icon">
+                            <Check size={14} strokeWidth={3} />
                           </div>
-
-                          <div className="surah-card-action">
-                            {surah.isCompleted && (
-                              <div className="completed-check-icon">
-                                <Check size={14} strokeWidth={3} />
-                              </div>
-                            )}
-                            {currentUser.role === 'admin' && (
-                              <button
-                                className="admin-delete-btn"
-                                onClick={(e) => handleDeleteSurah(surah.id, e)}
-                                title="Surani butunlay o'chirish"
-                              >
-                                <Trash size={16} />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'var(--text-muted)', padding: '40px 0', fontSize: '14px' }}>
-                      Hech qanday sura topilmadi.
-                    </p>
-                  )}
-                </div>
-
-                {/* Mobile Study Banner */}
-                {lastStudied && (
-                  <div className="last-studied-section mobile-only">
-                    <div>
-                      <span className="last-studied-title">Oxirgi yodlagan sura</span>
-                      <h4 className="last-studied-name">{lastStudied.name}</h4>
+                        )}
+                        {currentUser.role === 'admin' && (
+                          <button
+                            className="admin-delete-btn"
+                            onClick={(e) => handleDeleteSurah(surah.id, e)}
+                            title="Surani butunlay o'chirish"
+                          >
+                            <Trash size={16} />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <span className="last-studied-time">{lastStudied.time}</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="dashboard-right-panel">
-                {renderTodoList()}
-              </div>
+                  );
+                })
+              ) : (
+                <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'var(--text-muted)', padding: '40px 0', fontSize: '14px' }}>
+                  Hech qanday sura topilmadi.
+                </p>
+              )}
             </div>
+
+            {/* Mobile Study Banner */}
+            {lastStudied && (
+              <div className="last-studied-section mobile-only">
+                <div>
+                  <span className="last-studied-title">Oxirgi yodlagan sura</span>
+                  <h4 className="last-studied-name">{lastStudied.name}</h4>
+                </div>
+                <span className="last-studied-time">{lastStudied.time}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'todos' && (
+          <div className="content-scroll-container padding-20" style={{ maxWidth: '640px', margin: '0 auto' }}>
+            {renderTodoList()}
           </div>
         )}
 
@@ -1949,6 +1957,13 @@ function App() {
         >
           <BarChart2 className="nav-item-icon" />
           <span className="nav-item-text">Statistika</span>
+        </button>
+        <button
+          className={`nav-item ${activeTab === 'todos' ? 'active' : ''}`}
+          onClick={() => setActiveTab('todos')}
+        >
+          <CheckSquare className="nav-item-icon" />
+          <span className="nav-item-text">Reja</span>
         </button>
         <button
           className={`nav-item ${activeTab === 'reminders' ? 'active' : ''}`}
