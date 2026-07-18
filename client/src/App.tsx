@@ -948,6 +948,29 @@ function App() {
     }
   };
 
+  const handleDeleteUser = async (userId: number, userName: string) => {
+    if (!currentUser) return;
+    const confirmDelete = window.confirm(`${userName} akkauntini o'chirishni tasdiqlaysizmi? Barcha yodlangan oyatlar va natijalar butunlay o'chib ketadi!`);
+    if (!confirmDelete) return;
+
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${currentUser.token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message || 'Foydalanuvchi o\'chirildi');
+        setAdminUsers(adminUsers.filter(u => u.id !== userId));
+      } else {
+        alert(data.error || 'O\'chirishda xatolik yuz berdi');
+      }
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      alert('Foydalanuvchini o\'chirishda xatolik yuz berdi');
+    }
+  };
+
   // Generate GitHub-style Heatmap Grid
   const renderHeatmap = () => {
     const dates: { dateStr: string; count: number; dayOfWeek: number }[] = [];
@@ -1894,6 +1917,17 @@ function App() {
                       <KeyRound size={12} />
                       <span>Parol</span>
                     </button>
+
+                    {u.id !== currentUser.id && (
+                      <button
+                        className="admin-delete-btn"
+                        style={{ padding: '6px', border: '1px solid #DC2626', color: '#DC2626', backgroundColor: 'transparent', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'var(--transition)' }}
+                        onClick={() => handleDeleteUser(u.id, u.name)}
+                        title="Foydalanuvchini o'chirish"
+                      >
+                        <Trash size={12} />
+                      </button>
+                    )}
                   </div>
                 </div>
               ))}

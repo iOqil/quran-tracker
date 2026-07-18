@@ -319,6 +319,40 @@ app.post('/api/admin/users/:id/password', authenticateUser, async (req, res) => 
   }
 });
 
+// DELETE /api/admin/users/:id
+app.delete('/api/admin/users/:id', authenticateUser, async (req, res) => {
+  const adminUser = req.body.user;
+  if (adminUser.role !== 'admin') {
+    return res.status(403).json({ error: 'Ruxsat etilmagan bo\'lim' });
+  }
+
+  const { id } = req.params;
+  const userIdToDelete = parseInt(id);
+
+  if (userIdToDelete === adminUser.id) {
+    return res.status(400).json({ error: 'O\'zingizning akkauntingizni o\'chira olmaysiz' });
+  }
+
+  try {
+    const userExists = await prisma.user.findUnique({
+      where: { id: userIdToDelete }
+    });
+
+    if (!userExists) {
+      return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
+    }
+
+    await prisma.user.delete({
+      where: { id: userIdToDelete }
+    });
+
+    res.json({ success: true, message: 'Foydalanuvchi muvaffaqiyatli o\'chirildi' });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ error: 'Foydalanuvchini o\'chirishda xatolik yuz berdi' });
+  }
+});
+
 // --- CORE APIS ---
 
 // GET /api/surahs
