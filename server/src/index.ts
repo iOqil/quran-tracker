@@ -15,6 +15,49 @@ app.use(express.json());
 // Initialize a single global Prisma Client instance (connects to MySQL via process.env.DATABASE_URL)
 const prisma = new PrismaClient();
 
+// Helper to log user daily activity counts
+async function logActivity(userId: number, type: 'todo' | 'verse', incrementValue: number) {
+  const tzOffset = (new Date()).getTimezoneOffset() * 60000;
+  const localISODate = (new Date(Date.now() - tzOffset)).toISOString().slice(0, 10);
+
+  try {
+    const existing = await prisma.activityLog.findUnique({
+      where: {
+        userId_date_type: {
+          userId,
+          date: localISODate,
+          type
+        }
+      }
+    });
+
+    if (existing) {
+      const newCount = Math.max(0, existing.count + incrementValue);
+      if (newCount === 0) {
+        await prisma.activityLog.delete({
+          where: { id: existing.id }
+        });
+      } else {
+        await prisma.activityLog.update({
+          where: { id: existing.id },
+          data: { count: newCount }
+        });
+      }
+    } else if (incrementValue > 0) {
+      await prisma.activityLog.create({
+        data: {
+          userId,
+          date: localISODate,
+          type,
+          count: incrementValue
+        }
+      });
+    }
+  } catch (error) {
+    console.error('Error logging activity:', error);
+  }
+}
+
 // Authenticate Middleware: extracts and verifies JWT from Bearer Authorization header
 const authenticateUser = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
   const authHeader = req.headers.authorization;
@@ -450,6 +493,7 @@ app.post('/api/progress', authenticateUser, async (req, res) => {
           isMemorized: true,
         },
       });
+      await logActivity(user.id, 'verse', 1);
     } else {
       try {
         await prisma.verseProgress.delete({
@@ -461,6 +505,7 @@ app.post('/api/progress', authenticateUser, async (req, res) => {
             },
           },
         });
+        await logActivity(user.id, 'verse', -1);
       } catch (e) {
         // ignore
       }
@@ -490,7 +535,12 @@ app.post('/api/progress/bulk', authenticateUser, async (req, res) => {
       });
 
       if (surah) {
-        // delete existing for this user
+        // Get count of already checked verses before deleting
+        const existingCount = await prisma.verseProgress.count({
+          where: { userId: user.id, surahId: sId }
+        });
+        const newlyCheckedCount = surah.verseCount - existingCount;
+
         await prisma.verseProgress.deleteMany({
           where: { userId: user.id, surahId: sId },
         });
@@ -505,11 +555,24 @@ app.post('/api/progress/bulk', authenticateUser, async (req, res) => {
         await prisma.verseProgress.createMany({
           data,
         });
+
+        if (newlyCheckedCount > 0) {
+          await logActivity(user.id, 'verse', newlyCheckedCount);
+        }
       }
     } else {
+      // Get count of checked verses before deleting
+      const currentCount = await prisma.verseProgress.count({
+        where: { userId: user.id, surahId: sId }
+      });
+
       await prisma.verseProgress.deleteMany({
         where: { userId: user.id, surahId: sId },
       });
+
+      if (currentCount > 0) {
+        await logActivity(user.id, 'verse', -currentCount);
+      }
     }
 
     res.json({ success: true });
@@ -648,6 +711,132 @@ app.get('/api/stats', authenticateUser, async (req, res) => {
   } catch (error) {
     console.error('Error fetching stats:', error);
     res.status(500).json({ error: 'Failed to fetch stats' });
+  }
+});
+
+// --- TODO CRUD APIS ---
+
+// GET /api/todos
+app.get('/api/todos', authenticateUser, async (req, res) => {
+  const user = req.body.user;
+  try {
+    const todos = await prisma.todo.findMany({
+      where: { userId: user.id },
+      orderBy: { id: 'desc' }
+    });
+    res.json(todos);
+  } catch (error) {
+    console.error('Error fetching todos:', error);
+    res.status(500).json({ error: 'Failed to fetch todos' });
+  }
+});
+
+// POST /api/todos
+app.post('/api/todos', authenticateUser, async (req, res) => {
+  const { text } = req.body;
+  const user = req.body.user;
+
+  if (!text) {
+    return res.status(400).json({ error: 'Reja matni kiritilmadi' });
+  }
+
+  try {
+    const todo = await prisma.todo.create({
+      data: {
+        userId: user.id,
+        text,
+        completed: false
+      }
+    });
+    res.status(201).json(todo);
+  } catch (error) {
+    console.error('Error creating todo:', error);
+    res.status(500).json({ error: 'Rejani saqlashda xatolik' });
+  }
+});
+
+// POST /api/todos/:id/toggle
+app.post('/api/todos/:id/toggle', authenticateUser, async (req, res) => {
+  const { id } = req.params;
+  const user = req.body.user;
+
+  try {
+    const todo = await prisma.todo.findFirst({
+      where: { id: parseInt(id), userId: user.id }
+    });
+
+    if (!todo) {
+      return res.status(404).json({ error: 'Vazifa topilmadi' });
+    }
+
+    const updatedCompleted = !todo.completed;
+    const updated = await prisma.todo.update({
+      where: { id: todo.id },
+      data: {
+        completed: updatedCompleted,
+        completedAt: updatedCompleted ? new Date() : null
+      }
+    });
+
+    // Log activity
+    await logActivity(user.id, 'todo', updatedCompleted ? 1 : -1);
+
+    res.json(updated);
+  } catch (error) {
+    console.error('Error toggling todo:', error);
+    res.status(500).json({ error: 'Vazifa holatini o\'zgartirishda xatolik' });
+  }
+});
+
+// DELETE /api/todos/:id
+app.delete('/api/todos/:id', authenticateUser, async (req, res) => {
+  const { id } = req.params;
+  const user = req.body.user;
+
+  try {
+    const todo = await prisma.todo.findFirst({
+      where: { id: parseInt(id), userId: user.id }
+    });
+
+    if (!todo) {
+      return res.status(404).json({ error: 'Vazifa topilmadi' });
+    }
+
+    if (todo.completed) {
+      await logActivity(user.id, 'todo', -1);
+    }
+
+    await prisma.todo.delete({
+      where: { id: todo.id }
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting todo:', error);
+    res.status(500).json({ error: 'Vazifani o\'chirishda xatolik' });
+  }
+});
+
+// --- ACTIVITY LOG ENDPOINT ---
+
+// GET /api/activities
+app.get('/api/activities', authenticateUser, async (req, res) => {
+  const user = req.body.user;
+  try {
+    const logs = await prisma.activityLog.findMany({
+      where: { userId: user.id },
+      select: { date: true, count: true }
+    });
+
+    const dateCounts: Record<string, number> = {};
+    logs.forEach((log) => {
+      dateCounts[log.date] = (dateCounts[log.date] || 0) + log.count;
+    });
+
+    res.json(dateCounts);
+  } catch (error) {
+    console.error('Error fetching activities:', error);
+    res.status(500).json({ error: 'Failed to fetch activities' });
   }
 });
 

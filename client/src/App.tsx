@@ -130,6 +130,13 @@ interface UserSession {
   token: string;
 }
 
+interface Todo {
+  id: number;
+  text: string;
+  completed: boolean;
+  completedAt?: string;
+}
+
 interface AdminUserDetail {
   id: number;
   username: string;
@@ -310,6 +317,12 @@ function App() {
   const [newReminderName, setNewReminderName] = useState('');
   const [repChecks, setRepChecks] = useState<Record<number, Record<string, boolean>>>({});
 
+  // Todo & Heatmap states
+  const [todos, setTodos] = useState<Todo[]>([]);
+  const [newTodoText, setNewTodoText] = useState('');
+  const [activities, setActivities] = useState<Record<string, number>>({});
+  const [todoLoading, setTodoLoading] = useState(false);
+
   const [lastStudied, setLastStudied] = useState<{ name: string; time: string } | null>(null);
 
   // Initialize and check user session from LocalStorage
@@ -369,6 +382,10 @@ function App() {
         const usersData = await usersRes.json();
         setAdminUsers(usersData);
       }
+
+      // Fetch Todos & Activities
+      await fetchTodos(activeUser);
+      await fetchActivities(activeUser);
     } catch (error) {
       console.error('Error fetching data:', error);
     }
@@ -838,6 +855,239 @@ function App() {
     localStorage.setItem(`repetitionChecks_${currentUser.id}`, JSON.stringify(updatedChecks));
   };
 
+  // Todo & Activity fetches and CRUD
+  const fetchTodos = async (user?: UserSession) => {
+    const activeUser = user || currentUser;
+    if (!activeUser) return;
+    try {
+      const headers = { 'Authorization': `Bearer ${activeUser.token}` };
+      const res = await fetch('/api/todos', { headers });
+      const data = await res.json();
+      if (Array.isArray(data)) setTodos(data);
+    } catch (e) {
+      console.error('Error fetching todos:', e);
+    }
+  };
+
+  const fetchActivities = async (user?: UserSession) => {
+    const activeUser = user || currentUser;
+    if (!activeUser) return;
+    try {
+      const headers = { 'Authorization': `Bearer ${activeUser.token}` };
+      const res = await fetch('/api/activities', { headers });
+      const data = await res.json();
+      if (data) setActivities(data);
+    } catch (e) {
+      console.error('Error fetching activities:', e);
+    }
+  };
+
+  const handleAddTodo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTodoText.trim() || !currentUser) return;
+    setTodoLoading(true);
+    try {
+      const res = await fetch('/api/todos', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${currentUser.token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ text: newTodoText })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setTodos([data, ...todos]);
+        setNewTodoText('');
+        fetchActivities();
+      }
+    } catch (err) {
+      console.error('Error adding todo:', err);
+    } finally {
+      setTodoLoading(false);
+    }
+  };
+
+  const handleToggleTodo = async (id: number) => {
+    if (!currentUser) return;
+    setTodos(todos.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
+    try {
+      const res = await fetch(`/api/todos/${id}/toggle`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${currentUser.token}` }
+      });
+      if (res.ok) {
+        fetchActivities();
+      } else {
+        fetchTodos();
+      }
+    } catch (err) {
+      console.error('Error toggling todo:', err);
+      fetchTodos();
+    }
+  };
+
+  const handleDeleteTodo = async (id: number) => {
+    if (!currentUser) return;
+    setTodos(todos.filter(t => t.id !== id));
+    try {
+      const res = await fetch(`/api/todos/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${currentUser.token}` }
+      });
+      if (res.ok) {
+        fetchActivities();
+      } else {
+        fetchTodos();
+      }
+    } catch (err) {
+      console.error('Error deleting todo:', err);
+      fetchTodos();
+    }
+  };
+
+  // Generate GitHub-style Heatmap Grid
+  const renderHeatmap = () => {
+    const dates: { dateStr: string; count: number; dayOfWeek: number }[] = [];
+    const today = new Date();
+    
+    const startDay = new Date();
+    startDay.setDate(today.getDate() - 364);
+    
+    const dayOfWeek = startDay.getDay();
+    const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    startDay.setDate(startDay.getDate() - diffToMonday);
+
+    for (let i = 0; i < 371; i++) {
+      const d = new Date(startDay);
+      d.setDate(startDay.getDate() + i);
+      
+      const tzOffset = d.getTimezoneOffset() * 60000;
+      const dateStr = new Date(d.getTime() - tzOffset).toISOString().slice(0, 10);
+      const count = activities[dateStr] || 0;
+      
+      dates.push({
+        dateStr,
+        count,
+        dayOfWeek: d.getDay()
+      });
+    }
+
+    const rows: typeof dates[] = Array.from({ length: 7 }, () => []);
+    
+    dates.forEach((item) => {
+      const rowIndex = item.dayOfWeek === 0 ? 6 : item.dayOfWeek - 1;
+      rows[rowIndex].push(item);
+    });
+
+    return (
+      <div className="heatmap-wrapper" style={{ marginBottom: '24px' }}>
+        <div className="heatmap-header">
+          <span className="heatmap-title">📊 Kunlik Faollik Kalendari</span>
+          <div className="heatmap-legend">
+            <span>Kam</span>
+            <div className="legend-cell level-0"></div>
+            <div className="legend-cell level-1"></div>
+            <div className="legend-cell level-2"></div>
+            <div className="legend-cell level-3"></div>
+            <div className="legend-cell level-4"></div>
+            <span>Ko'p</span>
+          </div>
+        </div>
+        
+        <div className="heatmap-scroll-container">
+          <div className="heatmap-grid">
+            <div className="heatmap-labels">
+              <span>Du</span>
+              <span>Ch</span>
+              <span>Ju</span>
+              <span>Ya</span>
+            </div>
+            
+            <div className="heatmap-days-container">
+              {rows.map((row, rIndex) => (
+                <div key={rIndex} className="heatmap-row">
+                  {row.map((day) => {
+                    let level = 'level-0';
+                    if (day.count > 0 && day.count <= 2) level = 'level-1';
+                    else if (day.count > 2 && day.count <= 4) level = 'level-2';
+                    else if (day.count > 4 && day.count <= 7) level = 'level-3';
+                    else if (day.count > 7) level = 'level-4';
+
+                    const formattedDate = new Date(day.dateStr).toLocaleDateString('uz-UZ', {
+                      day: 'numeric',
+                      month: 'long',
+                      year: 'numeric'
+                    });
+
+                    return (
+                      <div
+                        key={day.dateStr}
+                        className={`heatmap-cell ${level}`}
+                        title={`${formattedDate}: ${day.count} ta harakat`}
+                      />
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderTodoList = () => {
+    return (
+      <div className="todo-widget-card">
+        <h3 className="todo-widget-title">📌 Kunlik Vazifalar (Reja)</h3>
+        
+        <form onSubmit={handleAddTodo} className="todo-input-form">
+          <input
+            type="text"
+            className="admin-input todo-input"
+            placeholder="Yangi vazifa..."
+            value={newTodoText}
+            onChange={(e) => setNewTodoText(e.target.value)}
+            disabled={todoLoading}
+            required
+          />
+          <button type="submit" className="admin-submit-btn todo-add-btn" disabled={todoLoading} style={{ marginTop: 0 }}>
+            Qo'shish
+          </button>
+        </form>
+
+        <div className="todo-list-scroll">
+          {todos.length > 0 ? (
+            <div className="todo-items-list">
+              {todos.map((todo) => (
+                <div key={todo.id} className={`todo-item-row ${todo.completed ? 'completed' : ''}`}>
+                  <label className="todo-checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={todo.completed}
+                      onChange={() => handleToggleTodo(todo.id)}
+                    />
+                    <span className="todo-text">{todo.text}</span>
+                  </label>
+                  <button
+                    className="admin-delete-btn todo-del-btn"
+                    onClick={() => handleDeleteTodo(todo.id)}
+                    title="Vazifani o'chirish"
+                  >
+                    <Trash size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="todo-empty-text">Rejalar yo'q. Yangi vazifa qo'shing.</p>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   // Backup Export
   const handleExportBackup = () => {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(surahs));
@@ -1133,186 +1383,199 @@ function App() {
 
         {/* Dynamic Tab Render */}
         {activeTab === 'list' && (
-          <div className="content-scroll-container">
-            {/* Admin create surah card */}
-            {adminMode && currentUser.role === 'admin' && (
-              <div className="admin-card">
-                <h3 className="admin-form-title">Yangi Sura Yozib Olish (Global)</h3>
-                <form onSubmit={handleCreateSurah} className="admin-form-layout">
-                  <div className="admin-form-row">
-                    <div className="admin-form-group">
-                      <label>Sura Nomeri (1-114)</label>
-                      <input
-                        type="number"
-                        className="admin-input"
-                        placeholder="Masalan: 1"
-                        value={adminNumber}
-                        onChange={(e) => setAdminNumber(e.target.value)}
-                      />
-                    </div>
-                    <div className="admin-form-group">
-                      <label>Sura Nomi</label>
-                      <input
-                        type="text"
-                        className="admin-input"
-                        placeholder="Avtomatik to'ldiriladi"
-                        value={adminName}
-                        onChange={(e) => setAdminName(e.target.value)}
-                      />
-                    </div>
-                    <div className="admin-form-group">
-                      <label>Oyatlar Soni</label>
-                      <input
-                        type="number"
-                        className="admin-input"
-                        placeholder="Avtomatik to'ldiriladi"
-                        value={adminVerses}
-                        onChange={(e) => setAdminVerses(e.target.value)}
-                      />
-                    </div>
-                    <div className="admin-form-group">
-                      <label>Juz (1-30)</label>
-                      <select
-                        className="admin-select"
-                        value={adminJuz}
-                        onChange={(e) => setAdminJuz(e.target.value)}
-                      >
-                        {Array.from({ length: 30 }, (_, i) => (
-                          <option key={i + 1} value={i + 1}>
-                            {i + 1}-juz
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
+          <div className="content-scroll-container" style={{ padding: '20px' }}>
+            {/* Heatmap Widget */}
+            {renderHeatmap()}
 
-                  {formError && <p className="form-error-msg">{formError}</p>}
-                  {formSuccess && <p className="form-success-msg">{formSuccess}</p>}
-
-                  <button type="submit" className="admin-submit-btn">
-                    Sura va Checkboxlarni Generatsiya Qilish
-                  </button>
-                </form>
-              </div>
-            )}
-
-            {/* Filters and Search toolbar */}
-            <div className="toolbar-layout">
-              <div className="search-box-wrapper">
-                <Search size={18} className="search-icon" />
-                <input
-                  type="text"
-                  placeholder="Sura nomi yoki raqamini qidirish..."
-                  className="admin-input search-input"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-
-              <div className="filter-dropdown-wrapper">
-                <Filter size={16} className="filter-icon" />
-                <select
-                  className="admin-select filter-select"
-                  value={juzFilter}
-                  onChange={(e) => setJuzFilter(e.target.value)}
-                >
-                  <option value="all">Barcha Juzlar</option>
-                  {Array.from({ length: 30 }, (_, i) => (
-                    <option key={i + 1} value={i + 1}>
-                      Juz {i + 1}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="filters-bar-buttons">
-                <button
-                  className={`filter-btn ${filter === 'all' ? 'active' : ''}`}
-                  onClick={() => setFilter('all')}
-                >
-                  Barchasi
-                </button>
-                <button
-                  className={`filter-btn ${filter === 'memorized' ? 'active' : ''}`}
-                  onClick={() => setFilter('memorized')}
-                >
-                  Yodlangan
-                </button>
-                <button
-                  className={`filter-btn ${filter === 'remaining' ? 'active' : ''}`}
-                  onClick={() => setFilter('remaining')}
-                >
-                  Qolgan
-                </button>
-              </div>
-            </div>
-
-            {/* Surahs Grid Section */}
-            <h2 className="surah-section-title">Suralar Ro'yxati</h2>
-            
-            <div className="surahs-grid-desktop">
-              {filteredSurahs.length > 0 ? (
-                filteredSurahs.map((surah) => {
-                  const percent = (surah.memorizedCount / (surah.verseCount || 1)) * 100;
-                  return (
-                    <div
-                      key={surah.id}
-                      className={`surah-card ${surah.isCompleted ? 'completed' : ''}`}
-                      onClick={() => handleOpenSurah(surah.id)}
-                    >
-                      {!surah.isCompleted && (
-                        <div
-                          className="surah-card-progress-bg"
-                          style={{ width: `${percent}%` }}
-                        />
-                      )}
-
-                      <div className="surah-card-content">
-                        <div className="surah-number-badge">{surah.number}</div>
-                        <div className="surah-info">
-                          <span className="surah-name">{surah.name}</span>
-                          <span className="surah-progress-text">
-                            {surah.memorizedCount} / {surah.verseCount} oyat ({surah.juz}-juz)
-                          </span>
+            <div className="dashboard-split-layout">
+              <div className="dashboard-left-panel">
+                {/* Admin create surah card */}
+                {adminMode && currentUser.role === 'admin' && (
+                  <div className="admin-card" style={{ marginBottom: '20px' }}>
+                    <h3 className="admin-form-title">Yangi Sura Yozib Olish (Global)</h3>
+                    <form onSubmit={handleCreateSurah} className="admin-form-layout">
+                      <div className="admin-form-row">
+                        <div className="admin-form-group">
+                          <label>Sura Nomeri (1-114)</label>
+                          <input
+                            type="number"
+                            className="admin-input"
+                            placeholder="Masalan: 1"
+                            value={adminNumber}
+                            onChange={(e) => setAdminNumber(e.target.value)}
+                          />
+                        </div>
+                        <div className="admin-form-group">
+                          <label>Sura Nomi</label>
+                          <input
+                            type="text"
+                            className="admin-input"
+                            placeholder="Avtomatik to'ldiriladi"
+                            value={adminName}
+                            onChange={(e) => setAdminName(e.target.value)}
+                          />
+                        </div>
+                        <div className="admin-form-group">
+                          <label>Oyatlar Soni</label>
+                          <input
+                            type="number"
+                            className="admin-input"
+                            placeholder="Avtomatik to'ldiriladi"
+                            value={adminVerses}
+                            onChange={(e) => setAdminVerses(e.target.value)}
+                          />
+                        </div>
+                        <div className="admin-form-group">
+                          <label>Juz (1-30)</label>
+                          <select
+                            className="admin-select"
+                            value={adminJuz}
+                            onChange={(e) => setAdminJuz(e.target.value)}
+                          >
+                            {Array.from({ length: 30 }, (_, i) => (
+                              <option key={i + 1} value={i + 1}>
+                                {i + 1}-juz
+                              </option>
+                            ))}
+                          </select>
                         </div>
                       </div>
 
-                      <div className="surah-card-action">
-                        {surah.isCompleted && (
-                          <div className="completed-check-icon">
-                            <Check size={14} strokeWidth={3} />
-                          </div>
-                        )}
-                        {currentUser.role === 'admin' && (
-                          <button
-                            className="admin-delete-btn"
-                            onClick={(e) => handleDeleteSurah(surah.id, e)}
-                            title="Surani butunlay o'chirish"
-                          >
-                            <Trash size={16} />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'var(--text-muted)', padding: '40px 0', fontSize: '14px' }}>
-                  Hech qanday sura topilmadi.
-                </p>
-              )}
-            </div>
+                      {formError && <p className="form-error-msg">{formError}</p>}
+                      {formSuccess && <p className="form-success-msg">{formSuccess}</p>}
 
-            {/* Mobile Study Banner */}
-            {lastStudied && (
-              <div className="last-studied-section mobile-only">
-                <div>
-                  <span className="last-studied-title">Oxirgi yodlagan sura</span>
-                  <h4 className="last-studied-name">{lastStudied.name}</h4>
+                      <button type="submit" className="admin-submit-btn">
+                        Sura va Checkboxlarni Generatsiya Qilish
+                      </button>
+                    </form>
+                  </div>
+                )}
+
+                {/* Filters and Search toolbar */}
+                <div className="toolbar-layout" style={{ marginBottom: '20px' }}>
+                  <div className="search-box-wrapper">
+                    <Search size={18} className="search-icon" />
+                    <input
+                      type="text"
+                      placeholder="Sura nomi yoki raqamini qidirish..."
+                      className="admin-input search-input"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="filter-dropdown-wrapper">
+                    <Filter size={16} className="filter-icon" />
+                    <select
+                      className="admin-select filter-select"
+                      value={juzFilter}
+                      onChange={(e) => setJuzFilter(e.target.value)}
+                    >
+                      <option value="all">Barcha Juzlar</option>
+                      {Array.from({ length: 30 }, (_, i) => (
+                        <option key={i + 1} value={i + 1}>
+                          Juz {i + 1}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="filters-bar-buttons">
+                    <button
+                      className={`filter-btn ${filter === 'all' ? 'active' : ''}`}
+                      onClick={() => setFilter('all')}
+                    >
+                      Barchasi
+                    </button>
+                    <button
+                      className={`filter-btn ${filter === 'memorized' ? 'active' : ''}`}
+                      onClick={() => setFilter('memorized')}
+                    >
+                      Yodlangan
+                    </button>
+                    <button
+                      className={`filter-btn ${filter === 'remaining' ? 'active' : ''}`}
+                      onClick={() => setFilter('remaining')}
+                    >
+                      Qolgan
+                    </button>
+                  </div>
                 </div>
-                <span className="last-studied-time">{lastStudied.time}</span>
+
+                {/* Surahs Grid Section */}
+                <h2 className="surah-section-title">Suralar Ro'yxati</h2>
+                
+                <div className="surahs-grid-desktop" style={{ marginTop: '12px' }}>
+                  {filteredSurahs.length > 0 ? (
+                    filteredSurahs.map((surah) => {
+                      const percent = (surah.memorizedCount / (surah.verseCount || 1)) * 100;
+                      return (
+                        <div
+                          key={surah.id}
+                          className={`surah-card ${surah.isCompleted ? 'completed' : ''}`}
+                          onClick={() => handleOpenSurah(surah.id)}
+                        >
+                          {!surah.isCompleted && (
+                            <div
+                              className="surah-card-progress-bg"
+                              style={{ width: `${percent}%` }}
+                            />
+                          )}
+
+                          <div className="surah-card-content">
+                            <div className="surah-number-badge">{surah.number}</div>
+                            <div className="surah-info">
+                              <span className="surah-name">{surah.name}</span>
+                              <span className="surah-juz-badge">{surah.juz}-juz</span>
+                            </div>
+                          </div>
+
+                          <div className="surah-stats-text">
+                            {surah.memorizedCount} / {surah.verseCount} oyat
+                          </div>
+
+                          <div className="surah-card-action">
+                            {surah.isCompleted && (
+                              <div className="completed-check-icon">
+                                <Check size={14} strokeWidth={3} />
+                              </div>
+                            )}
+                            {currentUser.role === 'admin' && (
+                              <button
+                                className="admin-delete-btn"
+                                onClick={(e) => handleDeleteSurah(surah.id, e)}
+                                title="Surani butunlay o'chirish"
+                              >
+                                <Trash size={16} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'var(--text-muted)', padding: '40px 0', fontSize: '14px' }}>
+                      Hech qanday sura topilmadi.
+                    </p>
+                  )}
+                </div>
+
+                {/* Mobile Study Banner */}
+                {lastStudied && (
+                  <div className="last-studied-section mobile-only">
+                    <div>
+                      <span className="last-studied-title">Oxirgi yodlagan sura</span>
+                      <h4 className="last-studied-name">{lastStudied.name}</h4>
+                    </div>
+                    <span className="last-studied-time">{lastStudied.time}</span>
+                  </div>
+                )}
               </div>
-            )}
+
+              <div className="dashboard-right-panel">
+                {renderTodoList()}
+              </div>
+            </div>
           </div>
         )}
 

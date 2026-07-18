@@ -1504,3 +1504,254 @@ body {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-6px); }
 }
+
+/* Dashboard Split Layout */
+.dashboard-split-layout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  margin-top: 12px;
+}
+
+.dashboard-left-panel {
+  flex: 1;
+}
+
+.dashboard-right-panel {
+  width: 320px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 20px;
+}
+
+/* GitHub Heatmap Calendar */
+.heatmap-wrapper {
+  background-color: #FFFFFF;
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 16px 20px;
+  box-shadow: var(--shadow);
+}
+
+.heatmap-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.heatmap-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--primary-dark);
+}
+
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.legend-cell {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.heatmap-scroll-container {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.heatmap-scroll-container::-webkit-scrollbar {
+  height: 4px;
+}
+.heatmap-scroll-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+.heatmap-scroll-container::-webkit-scrollbar-thumb {
+  background: #E5E7EB;
+  border-radius: 2px;
+}
+
+.heatmap-grid {
+  display: flex;
+  gap: 8px;
+  width: max-content;
+}
+
+.heatmap-labels {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 9px;
+  color: var(--text-muted);
+  padding: 2px 0;
+  width: 18px;
+  line-height: 10px;
+  height: 94px;
+}
+
+.heatmap-days-container {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.heatmap-row {
+  display: flex;
+  gap: 3px;
+}
+
+.heatmap-cell {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.heatmap-cell:hover {
+  transform: scale(1.3);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+}
+
+/* Contribution Colors */
+.level-0 { background-color: #EBEDF0; }
+.level-1 { background-color: #9BE9A8; }
+.level-2 { background-color: #40C463; }
+.level-3 { background-color: #30A14E; }
+.level-4 { background-color: #216E39; }
+
+/* Todo Widget Styling */
+.todo-widget-card {
+  background-color: #FFFFFF;
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+
+.todo-widget-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--primary-dark);
+  margin-bottom: 12px;
+}
+
+.todo-input-form {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.todo-input {
+  flex: 1;
+  font-size: 13px !important;
+  padding: 8px 12px !important;
+  height: 38px !important;
+}
+
+.todo-add-btn {
+  padding: 8px 12px !important;
+  font-size: 12px !important;
+  height: 38px !important;
+  margin-top: 0 !important;
+  flex-shrink: 0;
+  width: auto !important;
+}
+
+.todo-list-scroll {
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.todo-empty-text {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 24px 8px;
+  line-height: 1.6;
+}
+
+.todo-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.todo-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background-color: var(--bg-app);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  transition: var(--transition);
+}
+
+.todo-item-row:hover {
+  border-color: var(--primary-light);
+  box-shadow: 0 2px 8px rgba(216, 76, 123, 0.03);
+}
+
+.todo-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-color);
+  user-select: none;
+}
+
+.todo-checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.todo-item-row.completed {
+  opacity: 0.65;
+}
+
+.todo-item-row.completed .todo-text {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.todo-del-btn {
+  padding: 4px !important;
+  background: none !important;
+  border: none !important;
+  color: var(--text-muted) !important;
+  transition: var(--transition);
+  cursor: pointer;
+}
+
+.todo-del-btn:hover {
+  color: #DC2626 !important;
+}
+
+/* Responsive adjustments for Todo Split Layout */
+@media (max-width: 1024px) {
+  .dashboard-split-layout {
+    flex-direction: column;
+  }
+  
+  .dashboard-right-panel {
+    width: 100%;
+    position: static;
+    margin-top: 16px;
+  }
+}

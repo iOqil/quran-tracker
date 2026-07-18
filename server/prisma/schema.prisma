@@ -15,7 +15,9 @@ model User {
   name        String
   dailyTarget String          @default("1 sura")
   progresses  VerseProgress[]
-  createdAt  DateTime        @default(now())
+  todos       Todo[]
+  activities  ActivityLog[]
+  createdAt   DateTime        @default(now())
 }
 
 model Surah {
@@ -41,4 +43,28 @@ model VerseProgress {
   surah       Surah    @relation(fields: [surahId], references: [id], onDelete: Cascade)
 
   @@unique([userId, surahId, verseNumber])
+}
+
+model Todo {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  text        String
+  completed   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ActivityLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  type      String   // "todo" or "verse"
+  count     Int      @default(1)
+  date      String   // YYYY-MM-DD
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date, type])
 }
