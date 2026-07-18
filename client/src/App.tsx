@@ -675,6 +675,7 @@ function App() {
       });
       const statsData = await statsRes.json();
       setStats(statsData);
+      fetchActivities();
     } catch (error) {
       setSelectedSurah({
         ...selectedSurah,
@@ -739,6 +740,7 @@ function App() {
       });
       const statsData = await statsRes.json();
       setStats(statsData);
+      fetchActivities();
     } catch (error) {
       setSelectedSurah({
         ...selectedSurah,
