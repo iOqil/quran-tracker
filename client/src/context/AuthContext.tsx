@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import type { UserSession } from '../types';
 
 interface AuthContextType {
@@ -12,23 +12,28 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
-  const [adminMode, setAdminMode] = useState<boolean>(false);
-
-  useEffect(() => {
+  const [currentUser, setCurrentUser] = useState<UserSession | null>(() => {
     const saved = localStorage.getItem('userSession');
     if (saved) {
       try {
-        const parsed = JSON.parse(saved);
-        setCurrentUser(parsed);
-        if (parsed.role === 'admin') {
-          setAdminMode(true);
-        }
+        return JSON.parse(saved);
       } catch (e) {
         console.error('Failed to parse user session', e);
       }
     }
-  }, []);
+    return null;
+  });
+
+  const [adminMode, setAdminMode] = useState<boolean>(() => {
+    const saved = localStorage.getItem('userSession');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.role === 'admin';
+      } catch {}
+    }
+    return false;
+  });
 
   const logout = () => {
     localStorage.removeItem('userSession');
