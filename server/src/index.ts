@@ -79,6 +79,58 @@ async function logActivity(userId: number, type: 'todo' | 'verse', incrementValu
   }
 }
 
+// Automatically create a default repetition plan when a Surah is fully memorized
+async function autoCreateRepetitionPlan(userId: number, surahId: number, txClient?: any) {
+  const client = txClient || prisma;
+  
+  const existingPlan = await client.repetitionPlan.findUnique({
+    where: {
+      userId_surahId: { userId, surahId }
+    }
+  });
+
+  if (existingPlan) return;
+
+  const days = [1, 2, 3, 4, 7, 14, 30];
+  const times = ["09:00"];
+  const sDate = new Date();
+  const baseDateString = sDate.toISOString().split('T')[0];
+
+  const plan = await client.repetitionPlan.create({
+    data: {
+      userId,
+      surahId,
+      days: JSON.stringify(days),
+      times: JSON.stringify(times),
+      startDate: sDate
+    }
+  });
+
+  const generatedSessions = [];
+  const baseDateTime = new Date(baseDateString + 'T00:00:00Z');
+  
+  for (const day of days) {
+    const targetDateObj = new Date(baseDateTime.getTime());
+    targetDateObj.setUTCDate(targetDateObj.getUTCDate() + (day - 1));
+    const targetDateStr = targetDateObj.toISOString().split('T')[0];
+    
+    for (const time of times) {
+      generatedSessions.push({
+        userId,
+        planId: plan.id,
+        dayNumber: day,
+        date: targetDateStr,
+        time,
+        status: 'Kutilmoqda'
+      });
+    }
+  }
+
+  await client.repetitionSession.createMany({
+    data: generatedSessions
+  });
+}
+
 // Authenticate Middleware: extracts and verifies JWT from Bearer Authorization header
 const authenticateUser = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
   const authHeader = req.headers.authorization;
@@ -612,6 +664,14 @@ app.post('/api/progress', authenticateUser, async (req, res) => {
         },
       });
       await logActivity(user.id, 'verse', 1);
+
+      // Automatically create repetition plan if all verses are memorized
+      const progressesCount = await prisma.verseProgress.count({
+        where: { userId: user.id, surahId: sId }
+      });
+      if (progressesCount === surah.verseCount) {
+        await autoCreateRepetitionPlan(user.id, sId);
+      }
     } else {
       try {
         await prisma.verseProgress.delete({
@@ -686,6 +746,8 @@ app.post('/api/progress/bulk', authenticateUser, async (req, res) => {
         if (newlyCheckedCount > 0) {
           await logActivity(user.id, 'verse', newlyCheckedCount);
         }
+
+        await autoCreateRepetitionPlan(user.id, sId, tx);
       });
     } else {
       // Run bulk delete atomically using transaction

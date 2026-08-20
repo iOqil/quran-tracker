@@ -1815,9 +1815,12 @@ function App() {
                       required
                     >
                       <option value="">-- Sura tanlang --</option>
-                      {surahs.map(s => (
-                        <option key={s.id} value={s.id}>{s.name} ({s.verseCount} oyat)</option>
-                      ))}
+                      {surahs
+                        .filter(s => s.isCompleted && !repetitionPlans.some(p => p.surahId === s.id))
+                        .map(s => (
+                          <option key={s.id} value={s.id}>{s.name} ({s.verseCount} oyat)</option>
+                        ))
+                      }
                     </select>
                     <input
                       type="text"
