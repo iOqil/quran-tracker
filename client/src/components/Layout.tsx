@@ -1,0 +1,239 @@
+import React from 'react';
+import { NavLink, useLocation, Outlet, useNavigate } from 'react-router-dom';
+import {
+  BookOpen,
+  BarChart2,
+  Bell,
+  User,
+  LogOut,
+  Users,
+  CheckSquare,
+  Sparkles,
+  Heart
+} from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { CircularProgress } from './CircularProgress';
+import type { Stats } from '../types';
+
+interface LayoutProps {
+  stats: Stats | null;
+  lastStudied: { name: string; time: string } | null;
+  adminMode: boolean;
+  setAdminMode: (mode: boolean) => void;
+  contextValues: any;
+}
+
+export const Layout: React.FC<LayoutProps> = ({
+  stats,
+  lastStudied,
+  adminMode,
+  setAdminMode,
+  contextValues
+}) => {
+  const { currentUser, logout } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  if (!currentUser) return null;
+
+  // Calculate percentages
+  const surahsPercent = stats ? (stats.memorizedSurahs / (stats.totalSurahs || 114)) * 100 : 0;
+  const versesPercent = stats ? (stats.memorizedVerses / (stats.totalVerses || 6236)) * 100 : 0;
+  const juzPercent = stats ? (stats.memorizedJuzs / 30) * 100 : 0;
+
+  // Determine subheader title based on route
+  let subtitle = "Suralar Ro'yxati";
+  if (location.pathname === '/todos') subtitle = "Kunlik Reja va Vazifalar";
+  else if (location.pathname === '/stats') subtitle = "Mening Progress Statistikam";
+  else if (location.pathname === '/reminders') subtitle = "Takrorlash va Eslatmalar";
+  else if (location.pathname === '/profile') subtitle = "Akkaunt Sozlamalari";
+  else if (location.pathname === '/admin/users') subtitle = "Foydalanuvchilarni Boshqarish";
+
+  const handleLogoutClick = () => {
+    logout();
+    navigate('/login');
+  };
+
+  return (
+    <div className="app-container">
+      {/* Sidebar Navigation - Desktop only */}
+      <aside className="app-sidebar">
+        <div className="sidebar-logo">
+          <Heart size={22} fill="var(--primary-dark)" color="var(--primary-dark)" />
+          <span>QuranTracker</span>
+        </div>
+        
+        <div className="sidebar-profile">
+          <div className="sidebar-avatar">{currentUser.name.slice(0, 1).toUpperCase()}</div>
+          <div className="sidebar-profile-info">
+            <span className="sidebar-profile-name">{currentUser.name}</span>
+            <span className="sidebar-profile-status">
+              {currentUser.role === 'admin' ? 'Tizim Admini' : 'Yodlovchi'}
+            </span>
+          </div>
+        </div>
+
+        <nav className="sidebar-nav">
+          <NavLink
+            to="/"
+            className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}
+          >
+            <BookOpen size={18} />
+            Jadval
+          </NavLink>
+          <NavLink
+            to="/todos"
+            className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}
+          >
+            <CheckSquare size={18} />
+            Kunlik Reja
+          </NavLink>
+          <NavLink
+            to="/stats"
+            className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}
+          >
+            <BarChart2 size={18} />
+            Statistika
+          </NavLink>
+          <NavLink
+            to="/reminders"
+            className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}
+          >
+            <Bell size={18} />
+            Eslatmalar
+          </NavLink>
+          <NavLink
+            to="/profile"
+            className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}
+          >
+            <User size={18} />
+            Profil
+          </NavLink>
+          {currentUser.role === 'admin' && (
+            <NavLink
+              to="/admin/users"
+              className={({ isActive }) => `sidebar-nav-item ${isActive ? 'active' : ''}`}
+            >
+              <Users size={18} />
+              Foydalanuvchilar
+            </NavLink>
+          )}
+          <button className="sidebar-nav-item logout-btn" onClick={handleLogoutClick} style={{ marginTop: 'auto' }}>
+            <LogOut size={18} />
+            Chiqish (LogOut)
+          </button>
+        </nav>
+
+        {lastStudied && (
+          <div className="sidebar-last-studied">
+            <span className="last-studied-title">Oxirgi yodlangan sura</span>
+            <h4 className="last-studied-name">{lastStudied.name}</h4>
+            <span className="last-studied-time">{lastStudied.time}</span>
+          </div>
+        )}
+      </aside>
+
+      {/* Main Content Area */}
+      <main className="app-main-content">
+        {/* Top Header bar */}
+        <header className="main-header">
+          <div className="main-header-info">
+            <h1 className="main-header-title">Qalbimdagi Qur'on</h1>
+            <p className="main-header-subtitle">{subtitle}</p>
+          </div>
+          <div className="main-header-actions">
+            {currentUser.role === 'admin' && location.pathname === '/' && (
+              <button
+                className={`admin-toggle-pill ${adminMode ? 'active' : ''}`}
+                onClick={() => setAdminMode(!adminMode)}
+                title="Sura qo'shish paneli"
+              >
+                <Sparkles size={16} />
+                <span>Admin Rejimi</span>
+              </button>
+            )}
+            <button className="admin-toggle-pill mobile-only" onClick={handleLogoutClick} title="Tizimdan chiqish">
+              <LogOut size={16} />
+            </button>
+          </div>
+        </header>
+
+        {/* Circular stats banner */}
+        <section className="dashboard-stats">
+          <CircularProgress
+            percentage={surahsPercent}
+            value={stats?.memorizedSurahs || 0}
+            total={stats?.totalSurahs || 114}
+            label="Sura"
+            color="#D84C7B"
+          />
+          <CircularProgress
+            percentage={versesPercent}
+            value={stats?.memorizedVerses || 0}
+            total={stats?.totalVerses || 6236}
+            label="Oyat"
+            color="#E57399"
+          />
+          <CircularProgress
+            percentage={juzPercent}
+            value={stats?.memorizedJuzs || 0}
+            total={30}
+            label="Juz"
+            color="#FCD3E1"
+          />
+        </section>
+
+        {/* Child Pages Outlet */}
+        <Outlet context={contextValues} />
+      </main>
+
+      {/* Bottom Nav Bar - Mobile only */}
+      <nav className="bottom-nav">
+        <NavLink
+          to="/"
+          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+        >
+          <BookOpen className="nav-item-icon" />
+          <span className="nav-item-text">Jadval</span>
+        </NavLink>
+        <NavLink
+          to="/stats"
+          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+        >
+          <BarChart2 className="nav-item-icon" />
+          <span className="nav-item-text">Statistika</span>
+        </NavLink>
+        <NavLink
+          to="/todos"
+          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+        >
+          <CheckSquare className="nav-item-icon" />
+          <span className="nav-item-text">Reja</span>
+        </NavLink>
+        <NavLink
+          to="/reminders"
+          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+        >
+          <Bell className="nav-item-icon" />
+          <span className="nav-item-text">Eslatmalar</span>
+        </NavLink>
+        <NavLink
+          to="/profile"
+          className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+        >
+          <User className="nav-item-icon" />
+          <span className="nav-item-text">Profil</span>
+        </NavLink>
+        {currentUser.role === 'admin' && (
+          <NavLink
+            to="/admin/users"
+            className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+          >
+            <Users className="nav-item-icon" />
+            <span className="nav-item-text">Userlar</span>
+          </NavLink>
+        )}
+      </nav>
+    </div>
+  );
+};
