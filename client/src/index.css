@@ -1545,6 +1545,8 @@ body {
   border-radius: 16px;
   padding: 16px 20px;
   box-shadow: var(--shadow);
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .heatmap-header {
