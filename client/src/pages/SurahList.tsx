@@ -414,7 +414,7 @@ export const SurahList: React.FC = () => {
       {/* Top dashboard section: progress stats (vertical column) & activity heatmap side-by-side */}
       <div className="dashboard-top-grid">
         {/* Left Column: Progress Bars column (Vertical stack) */}
-        <div className="dashboard-stats-vertical" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div className="dashboard-stats-vertical">
           <CircularProgress
             percentage={surahsPercent}
             value={stats?.memorizedSurahs || 0}
