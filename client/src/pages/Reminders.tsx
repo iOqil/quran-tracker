@@ -242,14 +242,20 @@ export const Reminders: React.FC = () => {
 
   const todayStr = getLocalDateStr();
 
+  // Check if there are any actionable sessions today
+  const hasActionable = repetitionPlans.flatMap(p => p.sessions).some(s => s.status === 'Kutilmoqda' && s.date <= todayStr);
+
   return (
-    <div className="content-scroll-container padding-20" style={{ padding: '20px' }}>
-      <div className="reminders-dashboard-layout">
-        <div className="reminders-list-pane">
-          <h3 className="surah-section-title" style={{ margin: '0 0 12px 0' }}>Kunlik Eslatmalar</h3>
-          <div className="reminders-flex-list">
+    <div className="content-scroll-container padding-20" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      
+      {/* ROW 1: Kunlik Eslatmalar & Bugungi Progress */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+        {/* Left Column: Kunlik Eslatmalar */}
+        <div className="reminders-list-pane" style={{ backgroundColor: 'white', padding: '20px', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <h3 className="surah-section-title" style={{ margin: '0' }}>Kunlik Eslatmalar</h3>
+          <div className="reminders-flex-list" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {reminders.map((rem) => (
-              <div key={rem.id} className="reminder-card">
+              <div key={rem.id} className="reminder-card" style={{ margin: 0 }}>
                 <div className="reminder-info">
                   <span className="reminder-time">{rem.time}</span>
                   <span className="reminder-name">{rem.name}</span>
@@ -277,13 +283,13 @@ export const Reminders: React.FC = () => {
           </div>
 
           {/* Add Reminder Form */}
-          <form onSubmit={handleAddReminder} className="admin-form-layout" style={{ backgroundColor: 'white', padding: '16px', borderRadius: '16px', border: '1px solid var(--border-color)', marginTop: '16px', boxShadow: 'var(--shadow)' }}>
-            <h4 style={{ fontSize: '13px', fontWeight: 700, color: 'var(--primary-dark)' }}>Yangi Eslatma Qo'shish</h4>
+          <form onSubmit={handleAddReminder} className="admin-form-layout" style={{ backgroundColor: '#fcf8f9', padding: '12px 16px', borderRadius: '12px', border: '1px dashed var(--primary-light)', marginTop: '8px' }}>
+            <h4 style={{ fontSize: '12px', fontWeight: 700, color: 'var(--primary-dark)', margin: '0 0 8px 0' }}>Yangi Eslatma Qo'shish</h4>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               <input
                 type="time"
                 className="admin-input"
-                style={{ flex: '1 1 80px' }}
+                style={{ flex: '1 1 80px', height: '36px', padding: '6px 10px' }}
                 value={newReminderTime}
                 onChange={(e) => setNewReminderTime(e.target.value)}
                 required
@@ -291,77 +297,27 @@ export const Reminders: React.FC = () => {
               <input
                 type="text"
                 className="admin-input"
-                style={{ flex: '2 1 180px' }}
-                placeholder="Eslatma nomi (masalan: Takrorlash)"
+                style={{ flex: '2 1 180px', height: '36px', padding: '6px 10px' }}
+                placeholder="Eslatma nomi"
                 value={newReminderName}
                 onChange={(e) => setNewReminderName(e.target.value)}
                 required
               />
-              <button type="submit" className="admin-submit-btn" style={{ padding: '8px 16px', marginTop: 0, flex: '1 1 auto' }}>
+              <button type="submit" className="admin-submit-btn" style={{ padding: '8px 16px', marginTop: 0, flex: '1 1 auto', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 Qo'shish
               </button>
             </div>
           </form>
         </div>
 
-        <div className="repetition-table-pane" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <h3 className="surah-section-title" style={{ margin: '0' }}>Takrorlash Rejasi</h3>
-
-          {/* Plan Creator Form */}
-          <form onSubmit={handleCreateRepetitionPlan} className="add-todo-form" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              <select
-                className="auth-input"
-                value={repPlanFormSurah}
-                onChange={e => setRepPlanFormSurah(e.target.value)}
-                style={{ flex: 1, minWidth: '150px' }}
-                required
-              >
-                <option value="">-- Sura tanlang --</option>
-                {surahs
-                  .filter(s => s.isCompleted && !repetitionPlans.some(p => p.surahId === s.id))
-                  .map(s => (
-                    <option key={s.id} value={s.id}>{s.name} ({s.verseCount} oyat)</option>
-                  ))
-                }
-              </select>
-              <input
-                type="number"
-                min="1"
-                max="100"
-                className="auth-input"
-                value={repPlanFormDays}
-                onChange={e => setRepPlanFormDays(e.target.value)}
-                placeholder="Kunlar soni (m-n: 30)"
-                style={{ flex: 1, minWidth: '150px' }}
-                required
-              />
-              <input
-                type="text"
-                className="auth-input"
-                value={repPlanFormTimes}
-                onChange={e => setRepPlanFormTimes(e.target.value)}
-                placeholder="Vaqtlar (m-n: 09:00)"
-                style={{ flex: 1, minWidth: '150px' }}
-                required
-              />
-            </div>
-            <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', display: 'block', lineHeight: '1.4' }}>
-              ℹ️ <strong>Takrorlash kunlari (1, 2, 3, 4, 7...)</strong>: Surani yodlagan kuningizdan keyingi nisbiy kunlar. 
-              1 = Yodlangan kunning o'zi (bugun), 2 = ertasi kuni, 7 = 7-kuni va h.k.
-            </span>
-            <button type="submit" className="add-todo-btn" style={{ alignSelf: 'flex-start', marginTop: '6px' }}>
-              <Plus size={16} /> Reja yaratish
-            </button>
-          </form>
-
-          {/* Actionable Sessions (Today + Overdue) */}
-          {repetitionPlans.flatMap(p => p.sessions).some(s => s.status === 'Kutilmoqda' && s.date <= todayStr) && (
-            <div className="actionable-sessions-panel" style={{ backgroundColor: '#fff0f3', padding: '15px', borderRadius: '12px', border: '1px solid var(--primary-light)' }}>
-              <h4 style={{ margin: '0 0 10px 0', fontSize: '13px', color: 'var(--primary-dark)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <AlertCircle size={16} /> Bugungi va Kechikkan Takrorlashlar
-              </h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {/* Right Column: Bugungi Progress / Actionable Sessions */}
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {hasActionable ? (
+            <div className="actionable-sessions-panel" style={{ backgroundColor: '#fff0f3', padding: '20px', borderRadius: '16px', border: '1px solid var(--primary-light)', boxShadow: 'var(--shadow)', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <h3 className="surah-section-title" style={{ margin: '0', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--primary-dark)' }}>
+                <AlertCircle size={18} /> Bugungi Progress
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto', maxHeight: '320px' }}>
                 {repetitionPlans.map(plan => {
                   const actionable = plan.sessions.filter(s => s.status === 'Kutilmoqda' && s.date <= todayStr);
                   if (actionable.length === 0) return null;
@@ -385,132 +341,211 @@ export const Reminders: React.FC = () => {
                 })}
               </div>
             </div>
-          )}
-
-          {/* Active Plans List */}
-          {repetitionPlans.length > 0 ? (
-            <div className="repetition-flex-list">
-              {repetitionPlans.map((plan) => {
-                const completedCount = plan.sessions.filter(s => s.status === 'Bajarildi' || s.status === 'Qoniqarli').length;
-                const progressPercent = Math.round((completedCount / (plan.sessions.length || 1)) * 100);
-
-                // Determine next session
-                const pendingSessions = plan.sessions.filter(s => s.status === 'Kutilmoqda');
-                
-                let nextLabel = "Barcha takrorlashlar tugadi";
-                if (pendingSessions.length > 0) {
-                  const nextSession = pendingSessions.sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))[0];
-                  if (nextSession.date === todayStr) {
-                    nextLabel = `Bugun · ${nextSession.time}`;
-                  } else if (nextSession.date < todayStr) {
-                    nextLabel = `Kechikkan · ${nextSession.date}`;
-                  } else {
-                    nextLabel = `${nextSession.date} · ${nextSession.time}`;
-                  }
-                }
-
-                // Group sessions by date for the contribution graph
-                const groupedByDate: Record<string, typeof plan.sessions> = {};
-                plan.sessions.forEach(s => {
-                  if (!groupedByDate[s.date]) groupedByDate[s.date] = [];
-                  groupedByDate[s.date].push(s);
-                });
-
-                const uniqueDates = Object.keys(groupedByDate).sort();
-
-                return (
-                  <div key={plan.id} className="repetition-card" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '10px' }}>
-                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                       <div>
-                         <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--primary-dark)', display: 'block' }}>{plan.surah.name}</span>
-                         <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{plan.surah.verseCount}-oyat · {plan.surah.juz}-juz</span>
-                       </div>
-                       <div style={{ display: 'flex', gap: '4px' }}>
-                         <button onClick={() => handleEditRepetitionPlan(plan)} style={{ color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }} title="Tahrirlash">
-                           <Edit2 size={16} />
-                         </button>
-                         <button onClick={() => handleDeleteRepetitionPlan(plan.id)} style={{ color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }} title="O'chirish">
-                           <Trash2 size={16} />
-                         </button>
-                       </div>
-                     </div>
-
-                     {editingPlanId === plan.id ? (
-                       <form onSubmit={(e) => handleSaveEditedRepetitionPlan(e, plan.surahId)} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
-                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                           <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-main)' }}>Takrorlash kunlari soni (masalan: 30)</label>
-                           <input
-                             type="number"
-                             min="1"
-                             max="100"
-                             className="auth-input"
-                             value={editPlanDays}
-                             onChange={e => setEditPlanDays(e.target.value)}
-                             required
-                           />
-                         </div>
-                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                           <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-main)' }}>Takrorlash vaqtlari (masalan: 09:00)</label>
-                           <input
-                             type="text"
-                             className="auth-input"
-                             value={editPlanTimes}
-                             onChange={e => setEditPlanTimes(e.target.value)}
-                             required
-                           />
-                         </div>
-                         <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
-                           <button type="submit" className="status-pill btn-success" style={{ border: '1px solid #c3e6cb' }}>Saqlash</button>
-                           <button type="button" onClick={() => setEditingPlanId(null)} className="status-pill btn-danger" style={{ border: '1px solid #f5c6cb' }}>Bekor qilish</button>
-                          </div>
-                       </form>
-                     ) : (
-                       <>
-                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
-                           <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Progress: <strong style={{color: 'var(--primary-dark)'}}>{completedCount} / {plan.sessions.length}</strong> ({progressPercent}%)</span>
-                           <span style={{ fontSize: '11px', color: 'var(--primary-dark)', fontWeight: 600, backgroundColor: 'var(--primary-light)', padding: '2px 8px', borderRadius: '12px' }}>
-                             Keyingi: {nextLabel}
-                           </span>
-                         </div>
-
-                         {/* GitHub-style Contribution Graph */}
-                         <div className="repetition-grid-wrapper">
-                           {uniqueDates.map(dateStr => {
-                             const daySessions = groupedByDate[dateStr];
-                             let levelClass = 'level-0';
-
-                             if (daySessions.every(s => s.status === 'Bajarildi')) levelClass = 'level-4';
-                             else if (daySessions.some(s => s.status === "O'tkazib yuborildi")) levelClass = 'level-red';
-                             else if (daySessions.some(s => s.status === 'Bajarildi' || s.status === 'Qoniqarli')) levelClass = 'level-2';
-                             else if (dateStr < todayStr && daySessions.some(s => s.status === 'Kutilmoqda')) levelClass = 'level-red';
-
-                             const isToday = dateStr === todayStr;
-
-                             return (
-                               <div 
-                                 key={dateStr} 
-                                 className={`repetition-cell ${levelClass} ${isToday ? 'is-today' : ''}`}
-                                 title={`${dateStr}\n${daySessions.map(s => `${s.time}: ${s.status}`).join('\n')}`}
-                               ></div>
-                             );
-                           })}
-                         </div>
-                       </>
-                     )}
-                  </div>
-                );
-              })}
-            </div>
           ) : (
-            <div className="achievement-card" style={{ padding: '20px', backgroundColor: 'var(--bg-app)', border: '1px dashed var(--primary)' }}>
-              <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.6' }}>
-                🌟 Hozircha takrorlash rejalari yo'q.<br />
-                Suralarni takrorlash jadvalini yaratish uchun yuqoridagi formadan foydalaning.
+            <div className="actionable-sessions-panel" style={{ backgroundColor: '#f4fbf7', padding: '20px', borderRadius: '16px', border: '1px solid #c3e6cb', boxShadow: 'var(--shadow)', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '10px', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+              <div style={{ color: '#2e7d32', backgroundColor: '#e8f5e9', padding: '12px', borderRadius: '50%', marginBottom: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <AlertCircle size={28} />
+              </div>
+              <h3 className="surah-section-title" style={{ margin: '0', color: '#2e7d32' }}>Bugungi Progress</h3>
+              <p style={{ fontSize: '12.5px', color: '#4caf50', lineHeight: '1.5', margin: '0', maxWidth: '280px' }}>
+                Bugun takrorlanadigan suralar yo'q. Hamma takrorlashlar o'z vaqtida bajarilgan! 🎉
               </p>
             </div>
           )}
         </div>
       </div>
+
+      {/* ROW 2: Takrorlash Rejasi Yaratish Form (Full Width) */}
+      <div className="repetition-form-row" style={{ backgroundColor: 'white', padding: '20px', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow)' }}>
+        <h3 className="surah-section-title" style={{ margin: '0 0 16px 0' }}>Takrorlash rejasi</h3>
+        
+        <form onSubmit={handleCreateRepetitionPlan} className="add-todo-form" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)' }}>Sura tanlang</label>
+              <select
+                className="auth-input"
+                value={repPlanFormSurah}
+                onChange={e => setRepPlanFormSurah(e.target.value)}
+                style={{ width: '100%' }}
+                required
+              >
+                <option value="">-- Sura tanlang --</option>
+                {surahs
+                  .filter(s => s.isCompleted && !repetitionPlans.some(p => p.surahId === s.id))
+                  .map(s => (
+                    <option key={s.id} value={s.id}>{s.name} ({s.verseCount} oyat)</option>
+                  ))
+                }
+              </select>
+            </div>
+
+            <div style={{ flex: '1 1 150px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)' }}>Takrorlash kunlari soni</label>
+              <input
+                type="number"
+                min="1"
+                max="100"
+                className="auth-input"
+                value={repPlanFormDays}
+                onChange={e => setRepPlanFormDays(e.target.value)}
+                placeholder="Kunlar soni (m-n: 30)"
+                style={{ width: '100%' }}
+                required
+              />
+            </div>
+
+            <div style={{ flex: '1 1 150px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)' }}>Takrorlash vaqtlari</label>
+              <input
+                type="text"
+                className="auth-input"
+                value={repPlanFormTimes}
+                onChange={e => setRepPlanFormTimes(e.target.value)}
+                placeholder="Vaqtlar (vergul bilan: 09:00, 20:30)"
+                style={{ width: '100%' }}
+                required
+              />
+            </div>
+          </div>
+
+          <span style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+            ℹ️ <strong>Takrorlash kunlari (1, 2, 3, 4, 7...)</strong>: Surani yodlagan kuningizdan keyingi nisbiy kunlar. 
+            1 = Yodlangan kunning o'zi (bugun), 2 = ertasi kuni, 7 = 7-kuni va h.k.
+          </span>
+          <button type="submit" className="add-todo-btn" style={{ alignSelf: 'flex-start' }}>
+            <Plus size={16} /> Reja yaratish
+          </button>
+        </form>
+      </div>
+
+      {/* ROW 3: Active Repetition Plans Grid */}
+      <div>
+        <h3 className="surah-section-title" style={{ margin: '0 0 16px 0' }}>Takrorlash rejalari</h3>
+
+        {repetitionPlans.length > 0 ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '20px' }}>
+            {repetitionPlans.map((plan) => {
+              const completedCount = plan.sessions.filter(s => s.status === 'Bajarildi' || s.status === 'Qoniqarli').length;
+              const progressPercent = Math.round((completedCount / (plan.sessions.length || 1)) * 100);
+
+              // Determine next session
+              const pendingSessions = plan.sessions.filter(s => s.status === 'Kutilmoqda');
+              
+              let nextLabel = "Barcha takrorlashlar tugadi";
+              if (pendingSessions.length > 0) {
+                const nextSession = pendingSessions.sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))[0];
+                if (nextSession.date === todayStr) {
+                  nextLabel = `Bugun · ${nextSession.time}`;
+                } else if (nextSession.date < todayStr) {
+                  nextLabel = `Kechikkan · ${nextSession.date}`;
+                } else {
+                  nextLabel = `${nextSession.date} · ${nextSession.time}`;
+                }
+              }
+
+              // Group sessions by date for the contribution graph
+              const groupedByDate: Record<string, typeof plan.sessions> = {};
+              plan.sessions.forEach(s => {
+                if (!groupedByDate[s.date]) groupedByDate[s.date] = [];
+                groupedByDate[s.date].push(s);
+              });
+
+              const uniqueDates = Object.keys(groupedByDate).sort();
+
+              return (
+                <div key={plan.id} className="repetition-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '10px', backgroundColor: 'white', padding: '20px', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow)', margin: 0 }}>
+                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                     <div>
+                       <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--primary-dark)', display: 'block' }}>{plan.surah.name}</span>
+                       <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{plan.surah.verseCount}-oyat · {plan.surah.juz}-juz</span>
+                     </div>
+                     <div style={{ display: 'flex', gap: '4px' }}>
+                       <button onClick={() => handleEditRepetitionPlan(plan)} style={{ color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }} title="Tahrirlash">
+                         <Edit2 size={16} />
+                       </button>
+                       <button onClick={() => handleDeleteRepetitionPlan(plan.id)} style={{ color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }} title="O'chirish">
+                         <Trash2 size={16} />
+                       </button>
+                     </div>
+                   </div>
+
+                   {editingPlanId === plan.id ? (
+                     <form onSubmit={(e) => handleSaveEditedRepetitionPlan(e, plan.surahId)} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
+                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                         <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-main)' }}>Takrorlash kunlari soni (masalan: 30)</label>
+                         <input
+                           type="number"
+                           min="1"
+                           max="100"
+                           className="auth-input"
+                           value={editPlanDays}
+                           onChange={e => setEditPlanDays(e.target.value)}
+                           required
+                         />
+                       </div>
+                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                         <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-main)' }}>Takrorlash vaqtlari (masalan: 09:00)</label>
+                         <input
+                           type="text"
+                           className="auth-input"
+                           value={editPlanTimes}
+                           onChange={e => setEditPlanTimes(e.target.value)}
+                           required
+                         />
+                       </div>
+                       <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                         <button type="submit" className="status-pill btn-success" style={{ border: '1px solid #c3e6cb' }}>Saqlash</button>
+                         <button type="button" onClick={() => setEditingPlanId(null)} className="status-pill btn-danger" style={{ border: '1px solid #f5c6cb' }}>Bekor qilish</button>
+                        </div>
+                     </form>
+                   ) : (
+                     <>
+                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                         <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Progress: <strong style={{color: 'var(--primary-dark)'}}>{completedCount} / {plan.sessions.length}</strong> ({progressPercent}%)</span>
+                         <span style={{ fontSize: '11px', color: 'var(--primary-dark)', fontWeight: 600, backgroundColor: 'var(--primary-light)', padding: '2px 8px', borderRadius: '12px' }}>
+                           Keyingi: {nextLabel}
+                         </span>
+                       </div>
+
+                       {/* GitHub-style Contribution Graph */}
+                       <div className="repetition-grid-wrapper">
+                         {uniqueDates.map(dateStr => {
+                           const daySessions = groupedByDate[dateStr];
+                           let levelClass = 'level-0';
+
+                           if (daySessions.every(s => s.status === 'Bajarildi')) levelClass = 'level-4';
+                           else if (daySessions.some(s => s.status === "O'tkazib yuborildi")) levelClass = 'level-red';
+                           else if (daySessions.some(s => s.status === 'Bajarildi' || s.status === 'Qoniqarli')) levelClass = 'level-2';
+                           else if (dateStr < todayStr && daySessions.some(s => s.status === 'Kutilmoqda')) levelClass = 'level-red';
+
+                           const isToday = dateStr === todayStr;
+
+                           return (
+                             <div 
+                               key={dateStr} 
+                               className={`repetition-cell ${levelClass} ${isToday ? 'is-today' : ''}`}
+                               title={`${dateStr}\n${daySessions.map(s => `${s.time}: ${s.status}`).join('\n')}`}
+                             ></div>
+                           );
+                         })}
+                       </div>
+                     </>
+                   )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="achievement-card" style={{ padding: '20px', backgroundColor: 'var(--bg-app)', border: '1px dashed var(--primary)' }}>
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.6' }}>
+              🌟 Hozircha takrorlash rejalari yo'q.<br />
+              Suralarni takrorlash jadvalini yaratish uchun yuqoridagi formadan foydalaning.
+            </p>
+          </div>
+        )}
+      </div>
+      
     </div>
   );
 };

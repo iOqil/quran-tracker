@@ -827,15 +827,21 @@ body {
   gap: 16px;
 }
 
-.reminders-list-pane, .repetition-table-pane {
+.reminders-list-pane {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
-.reminders-flex-list, .repetition-flex-list {
+.reminders-flex-list {
   display: flex;
   flex-direction: column;
+  gap: 8px;
+}
+
+.repetition-flex-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
 }
 
@@ -1429,7 +1435,7 @@ body {
   }
 
   .reminders-dashboard-layout {
-    grid-template-columns: 1fr 1fr;
+    /* grid-template-columns: 1fr 1fr; */
     display: grid;
     gap: 40px;
   }
