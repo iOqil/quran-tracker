@@ -25,6 +25,14 @@ import {
   Trash2
 } from 'lucide-react';
 
+// Helper: get local date as YYYY-MM-DD (avoids UTC mismatch in UTC+5 timezone)
+function getLocalDateStr(d: Date = new Date()): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 // Reusable Circular Progress SVG Component
 interface CircularProgressProps {
   percentage: number;
@@ -114,7 +122,7 @@ interface RepetitionSession {
   dayNumber: number;
   date: string;
   time: string;
-  status: 'Bajarildi' | 'Qoniqarli' | 'O‘tkazib yuborildi' | 'Kutilmoqda';
+  status: "Bajarildi" | "Qoniqarli" | "O'tkazib yuborildi" | "Kutilmoqda";
 }
 
 interface RepetitionPlan {
@@ -1836,14 +1844,14 @@ function App() {
                 </form>
 
                 {/* Actionable Sessions (Today + Overdue) */}
-                {repetitionPlans.flatMap(p => p.sessions).some(s => s.status === 'Kutilmoqda' && s.date <= new Date().toISOString().split('T')[0]) && (
+                {repetitionPlans.flatMap(p => p.sessions).some(s => s.status === 'Kutilmoqda' && s.date <= getLocalDateStr()) && (
                   <div className="actionable-sessions-panel" style={{ backgroundColor: '#fff0f3', padding: '15px', borderRadius: '12px', border: '1px solid var(--primary-light)' }}>
                     <h4 style={{ margin: '0 0 10px 0', fontSize: '13px', color: 'var(--primary-dark)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <AlertCircle size={16} /> Bugungi va Kechikkan Takrorlashlar
                     </h4>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       {repetitionPlans.map(plan => {
-                        const todayStr = new Date().toISOString().split('T')[0];
+                        const todayStr = getLocalDateStr();
                         const actionable = plan.sessions.filter(s => s.status === 'Kutilmoqda' && s.date <= todayStr);
                         if (actionable.length === 0) return null;
                         
@@ -1859,7 +1867,7 @@ function App() {
                             <div style={{ display: 'flex', gap: '4px' }}>
                               <button onClick={() => handleUpdateSessionStatus(session.id, 'Bajarildi')} className="status-pill btn-success">Bajarildi</button>
                               <button onClick={() => handleUpdateSessionStatus(session.id, 'Qoniqarli')} className="status-pill btn-warning">Qoniqarli</button>
-                              <button onClick={() => handleUpdateSessionStatus(session.id, 'O‘tkazib yuborildi')} className="status-pill btn-danger">O'tkazib yub.</button>
+                              <button onClick={() => handleUpdateSessionStatus(session.id, "O'tkazib yuborildi")} className="status-pill btn-danger">O'tkazib yub.</button>
                             </div>
                           </div>
                         ));
@@ -1877,7 +1885,7 @@ function App() {
 
                       // Determine next session
                       const now = new Date();
-                      const todayStr = now.toISOString().split('T')[0];
+                      const todayStr = getLocalDateStr(now);
                       const pendingSessions = plan.sessions.filter(s => s.status === 'Kutilmoqda');
                       
                       let nextLabel = "Barcha takrorlashlar tugadi";
@@ -1927,7 +1935,7 @@ function App() {
                               let levelClass = 'level-0';
 
                               if (daySessions.every(s => s.status === 'Bajarildi')) levelClass = 'level-4';
-                              else if (daySessions.some(s => s.status === 'O‘tkazib yuborildi')) levelClass = 'level-red';
+                              else if (daySessions.some(s => s.status === "O'tkazib yuborildi")) levelClass = 'level-red';
                               else if (daySessions.some(s => s.status === 'Bajarildi' || s.status === 'Qoniqarli')) levelClass = 'level-2';
                               else if (dateStr < todayStr && daySessions.some(s => s.status === 'Kutilmoqda')) levelClass = 'level-red';
 

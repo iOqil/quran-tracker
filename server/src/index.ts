@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { PrismaClient } from '@prisma/client';
@@ -5,15 +6,35 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import path from 'path';
 
+import { User } from '@prisma/client';
+
+declare global {
+  namespace Express {
+    interface Request {
+      user: User;
+    }
+  }
+}
+
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || 'your_production_secret_key_change_me_12984';
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 
 // Initialize a single global Prisma Client instance (connects to MySQL via process.env.DATABASE_URL)
 const prisma = new PrismaClient();
+
+// Helper to safely parse integer route params
+function parseId(value: string): number | null {
+  const id = parseInt(value, 10);
+  return isNaN(id) ? null : id;
+}
+
+// Valid repetition session statuses
+const VALID_SESSION_STATUSES = ["Bajarildi", "Qoniqarli", "O'tkazib yuborildi", "Kutilmoqda"];
 
 // Helper to log user daily activity counts
 async function logActivity(userId: number, type: 'todo' | 'verse', incrementValue: number) {
@@ -78,7 +99,7 @@ const authenticateUser = async (req: express.Request, res: express.Response, nex
       return res.status(401).json({ error: 'Foydalanuvchi tizimda mavjud emas' });
     }
 
-    req.body.user = user; // attach user details to request
+    req.user = user; // attach user details to request
     next();
   } catch (error) {
     console.error('JWT verification error:', error);
@@ -149,7 +170,15 @@ app.post('/api/auth/login', async (req, res) => {
       where: { username },
     });
 
-    if (!user || !(await bcrypt.compare(password, user.password))) {
+    let isValid = false;
+    if (user) {
+      isValid = await bcrypt.compare(password, user.password);
+    } else {
+      // Run dummy compare to prevent timing side-channel user enumeration
+      await bcrypt.compare(password, '$2a$10$6HkU3/Q0U5z063t9b0N.nOu3919v.B19P9/S9.G1.6/5/5/5/5/5/');
+    }
+
+    if (!user || !isValid) {
       return res.status(400).json({ error: 'Login yoki parol xato!' });
     }
 
@@ -175,7 +204,7 @@ app.post('/api/auth/login', async (req, res) => {
 // POST /api/profile (Edit Profile and Account details)
 app.post('/api/profile', authenticateUser, async (req, res) => {
   const { name, dailyTarget, username, password } = req.body;
-  const user = req.body.user;
+  const user = req.user;
 
   try {
     const updateData: any = {
@@ -225,40 +254,36 @@ app.post('/api/profile', authenticateUser, async (req, res) => {
 
 // GET /api/admin/users
 app.get('/api/admin/users', authenticateUser, async (req, res) => {
-  const adminUser = req.body.user;
+  const adminUser = req.user;
   if (adminUser.role !== 'admin') {
     return res.status(403).json({ error: 'Ruxsat etilmagan bo\'lim' });
   }
 
   try {
     const users = await prisma.user.findMany({
+      include: {
+        progresses: true,
+      },
       orderBy: { id: 'asc' },
     });
 
     const surahs = await prisma.surah.findMany();
 
-    const result = [];
-    for (const u of users) {
+    const result = users.map((u) => {
       if (u.role === 'admin') {
-        result.push({
+        return {
           id: u.id,
           username: u.username,
           name: u.name,
           role: u.role,
           dailyTarget: u.dailyTarget,
           stats: null,
-        });
-        continue;
+        };
       }
 
-      // Query their progress directly from the relational progresses table
-      const progresses = await prisma.verseProgress.findMany({
-        where: { userId: u.id }
-      });
-      const memorizedVerses = progresses.length;
-
+      const memorizedVerses = u.progresses.length;
       const progressMap: Record<number, number> = {};
-      progresses.forEach((p) => {
+      u.progresses.forEach((p) => {
         progressMap[p.surahId] = (progressMap[p.surahId] || 0) + 1;
       });
 
@@ -269,7 +294,7 @@ app.get('/api/admin/users', authenticateUser, async (req, res) => {
         }
       });
 
-      result.push({
+      return {
         id: u.id,
         username: u.username,
         name: u.name,
@@ -279,8 +304,8 @@ app.get('/api/admin/users', authenticateUser, async (req, res) => {
           memorizedSurahs,
           memorizedVerses,
         },
-      });
-    }
+      };
+    });
 
     res.json(result);
   } catch (error) {
@@ -291,22 +316,34 @@ app.get('/api/admin/users', authenticateUser, async (req, res) => {
 
 // POST /api/admin/users/:id/password
 app.post('/api/admin/users/:id/password', authenticateUser, async (req, res) => {
-  const adminUser = req.body.user;
+  const adminUser = req.user;
   if (adminUser.role !== 'admin') {
     return res.status(403).json({ error: 'Ruxsat etilmagan bo\'lim' });
   }
 
-  const { id } = req.params;
+  const userId = parseId(req.params.id);
   const { newPassword } = req.body;
 
-  if (!newPassword) {
-    return res.status(400).json({ error: 'Yangi parol kiritilmadi' });
+  if (!userId) {
+    return res.status(400).json({ error: 'Noto\'g\'ri foydalanuvchi ID' });
+  }
+
+  if (!newPassword || newPassword.length < 4) {
+    return res.status(400).json({ error: 'Yangi parol kamida 4 ta belgidan iborat bo\'lishi kerak' });
   }
 
   try {
+    const userExists = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    if (!userExists) {
+      return res.status(404).json({ error: 'Foydalanuvchi topilmadi' });
+    }
+
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     await prisma.user.update({
-      where: { id: parseInt(id) },
+      where: { id: userId },
       data: {
         password: hashedPassword,
       },
@@ -321,13 +358,16 @@ app.post('/api/admin/users/:id/password', authenticateUser, async (req, res) => 
 
 // DELETE /api/admin/users/:id
 app.delete('/api/admin/users/:id', authenticateUser, async (req, res) => {
-  const adminUser = req.body.user;
+  const adminUser = req.user;
   if (adminUser.role !== 'admin') {
     return res.status(403).json({ error: 'Ruxsat etilmagan bo\'lim' });
   }
 
-  const { id } = req.params;
-  const userIdToDelete = parseInt(id);
+  const userIdToDelete = parseId(req.params.id);
+
+  if (!userIdToDelete) {
+    return res.status(400).json({ error: 'Noto\'g\'ri foydalanuvchi ID' });
+  }
 
   if (userIdToDelete === adminUser.id) {
     return res.status(400).json({ error: 'O\'zingizning akkauntingizni o\'chira olmaysiz' });
@@ -357,7 +397,7 @@ app.delete('/api/admin/users/:id', authenticateUser, async (req, res) => {
 
 // GET /api/surahs
 app.get('/api/surahs', authenticateUser, async (req, res) => {
-  const user = req.body.user;
+  const user = req.user;
   try {
     const surahs = await prisma.surah.findMany({
       orderBy: { number: 'asc' },
@@ -398,16 +438,20 @@ app.get('/api/surahs', authenticateUser, async (req, res) => {
 
 // GET /api/surahs/:id
 app.get('/api/surahs/:id', authenticateUser, async (req, res) => {
-  const { id } = req.params;
-  const user = req.body.user;
+  const surahId = parseId(req.params.id);
+  const user = req.user;
+
+  if (!surahId) {
+    return res.status(400).json({ error: 'Noto\'g\'ri sura ID' });
+  }
 
   try {
     const surah = await prisma.surah.findUnique({
-      where: { id: parseInt(id) },
+      where: { id: surahId },
     });
 
     if (!surah) {
-      return res.status(404).json({ error: 'Surah not found' });
+      return res.status(404).json({ error: 'Sura topilmadi' });
     }
 
     const progresses = await prisma.verseProgress.findMany({
@@ -433,7 +477,7 @@ app.get('/api/surahs/:id', authenticateUser, async (req, res) => {
 
 // POST /api/surahs (Create Surah Globally - Admin only)
 app.post('/api/surahs', authenticateUser, async (req, res) => {
-  const adminUser = req.body.user;
+  const adminUser = req.user;
   if (adminUser.role !== 'admin') {
     return res.status(403).json({ error: 'Faqat Admin sura yarata oladi!' });
   }
@@ -444,8 +488,19 @@ app.post('/api/surahs', authenticateUser, async (req, res) => {
     return res.status(400).json({ error: 'Sura nomi va oyatlar soni kerak' });
   }
 
+  const parsedVerseCount = parseInt(verseCount, 10);
+  const parsedJuz = parseInt(juz, 10) || 30;
+
+  if (isNaN(parsedVerseCount) || parsedVerseCount <= 0) {
+    return res.status(400).json({ error: 'Oyatlar soni musbat son bo\'lishi kerak' });
+  }
+
+  if (parsedJuz < 1 || parsedJuz > 30) {
+    return res.status(400).json({ error: 'Juz raqami 1 va 30 oralig\'ida bo\'lishi kerak' });
+  }
+
   try {
-    let surahNumber = parseInt(number);
+    let surahNumber = parseInt(number, 10);
     if (isNaN(surahNumber)) {
       const maxSurah = await prisma.surah.findFirst({
         orderBy: { number: 'desc' },
@@ -464,9 +519,9 @@ app.post('/api/surahs', authenticateUser, async (req, res) => {
     const newSurah = await prisma.surah.create({
       data: {
         name,
-        verseCount: parseInt(verseCount),
+        verseCount: parsedVerseCount,
         number: surahNumber,
-        juz: parseInt(juz) || 30,
+        juz: parsedJuz,
         isCustom: true,
       },
     });
@@ -480,15 +535,28 @@ app.post('/api/surahs', authenticateUser, async (req, res) => {
 
 // DELETE /api/surahs/:id (Delete Surah Globally - Admin only)
 app.delete('/api/surahs/:id', authenticateUser, async (req, res) => {
-  const adminUser = req.body.user;
+  const adminUser = req.user;
   if (adminUser.role !== 'admin') {
     return res.status(403).json({ error: 'Ruxsat etilmagan amal' });
   }
 
-  const { id } = req.params;
+  const surahId = parseId(req.params.id);
+
+  if (!surahId) {
+    return res.status(400).json({ error: 'Noto\'g\'ri sura ID' });
+  }
+
   try {
+    const surahExists = await prisma.surah.findUnique({
+      where: { id: surahId }
+    });
+
+    if (!surahExists) {
+      return res.status(404).json({ error: 'Sura topilmadi' });
+    }
+
     await prisma.surah.delete({
-      where: { id: parseInt(id) },
+      where: { id: surahId },
     });
     res.json({ message: 'Sura o\'chirib tashlandi' });
   } catch (error) {
@@ -500,15 +568,31 @@ app.delete('/api/surahs/:id', authenticateUser, async (req, res) => {
 // POST /api/progress (Toggle Single Verse)
 app.post('/api/progress', authenticateUser, async (req, res) => {
   const { surahId, verseNumber, isMemorized } = req.body;
-  const user = req.body.user;
+  const user = req.user;
 
   if (surahId === undefined || verseNumber === undefined || isMemorized === undefined) {
     return res.status(400).json({ error: 'surahId, verseNumber va isMemorized kiritilishi shart' });
   }
 
+  const sId = parseId(surahId.toString());
+  const vNum = parseId(verseNumber.toString());
+
+  if (!sId || !vNum) {
+    return res.status(400).json({ error: 'Sura ID yoki oyat raqami noto\'g\'ri' });
+  }
+
   try {
-    const sId = parseInt(surahId);
-    const vNum = parseInt(verseNumber);
+    const surah = await prisma.surah.findUnique({
+      where: { id: sId },
+    });
+
+    if (!surah) {
+      return res.status(404).json({ error: 'Sura topilmadi' });
+    }
+
+    if (vNum < 1 || vNum > surah.verseCount) {
+      return res.status(400).json({ error: `Oyat raqami 1 va ${surah.verseCount} oralig'ida bo'lishi kerak` });
+    }
 
     if (isMemorized) {
       await prisma.verseProgress.upsert({
@@ -541,41 +625,50 @@ app.post('/api/progress', authenticateUser, async (req, res) => {
         });
         await logActivity(user.id, 'verse', -1);
       } catch (e) {
-        // ignore
+        // Safe to ignore if already deleted
       }
     }
 
     res.json({ success: true });
   } catch (error) {
     console.error('Error updating progress:', error);
-    res.status(500).json({ error: 'Foydalanuvchi progressini yangilashda xato' });
+    res.status(500).json({ error: 'Foydalanuvchi progressini yangilashda xato yuz berdi' });
   }
 });
 
 // POST /api/progress/bulk (Toggle All)
 app.post('/api/progress/bulk', authenticateUser, async (req, res) => {
   const { surahId, isMemorized } = req.body;
-  const user = req.body.user;
+  const user = req.user;
 
   if (surahId === undefined || isMemorized === undefined) {
     return res.status(400).json({ error: 'surahId va isMemorized kiritilishi shart' });
   }
 
-  const sId = parseInt(surahId);
-  try {
-    if (isMemorized) {
-      const surah = await prisma.surah.findUnique({
-        where: { id: sId },
-      });
+  const sId = parseId(surahId.toString());
 
-      if (surah) {
-        // Get count of already checked verses before deleting
-        const existingCount = await prisma.verseProgress.count({
+  if (!sId) {
+    return res.status(400).json({ error: 'Noto\'g\'ri sura ID' });
+  }
+
+  try {
+    const surah = await prisma.surah.findUnique({
+      where: { id: sId },
+    });
+
+    if (!surah) {
+      return res.status(404).json({ error: 'Sura topilmadi' });
+    }
+
+    if (isMemorized) {
+      // Run bulk insert atomically using transaction
+      await prisma.$transaction(async (tx) => {
+        const existingCount = await tx.verseProgress.count({
           where: { userId: user.id, surahId: sId }
         });
         const newlyCheckedCount = surah.verseCount - existingCount;
 
-        await prisma.verseProgress.deleteMany({
+        await tx.verseProgress.deleteMany({
           where: { userId: user.id, surahId: sId },
         });
 
@@ -586,33 +679,35 @@ app.post('/api/progress/bulk', authenticateUser, async (req, res) => {
           isMemorized: true,
         }));
 
-        await prisma.verseProgress.createMany({
+        await tx.verseProgress.createMany({
           data,
         });
 
         if (newlyCheckedCount > 0) {
           await logActivity(user.id, 'verse', newlyCheckedCount);
         }
-      }
+      });
     } else {
-      // Get count of checked verses before deleting
-      const currentCount = await prisma.verseProgress.count({
-        where: { userId: user.id, surahId: sId }
-      });
+      // Run bulk delete atomically using transaction
+      await prisma.$transaction(async (tx) => {
+        const currentCount = await tx.verseProgress.count({
+          where: { userId: user.id, surahId: sId }
+        });
 
-      await prisma.verseProgress.deleteMany({
-        where: { userId: user.id, surahId: sId },
-      });
+        await tx.verseProgress.deleteMany({
+          where: { userId: user.id, surahId: sId },
+        });
 
-      if (currentCount > 0) {
-        await logActivity(user.id, 'verse', -currentCount);
-      }
+        if (currentCount > 0) {
+          await logActivity(user.id, 'verse', -currentCount);
+        }
+      });
     }
 
     res.json({ success: true });
   } catch (error) {
     console.error('Error updating bulk progress:', error);
-    res.status(500).json({ error: 'Bulk update error' });
+    res.status(500).json({ error: 'Bulk yangilashda xatolik yuz berdi' });
   }
 });
 
@@ -670,7 +765,7 @@ const standardJuzVerseCounts = [
 
 // GET /api/stats
 app.get('/api/stats', authenticateUser, async (req, res) => {
-  const user = req.body.user;
+  const user = req.user;
 
   try {
     const surahs = await prisma.surah.findMany();
@@ -752,7 +847,7 @@ app.get('/api/stats', authenticateUser, async (req, res) => {
 
 // GET /api/todos
 app.get('/api/todos', authenticateUser, async (req, res) => {
-  const user = req.body.user;
+  const user = req.user;
   try {
     const todos = await prisma.todo.findMany({
       where: { userId: user.id },
@@ -768,7 +863,7 @@ app.get('/api/todos', authenticateUser, async (req, res) => {
 // POST /api/todos
 app.post('/api/todos', authenticateUser, async (req, res) => {
   const { text } = req.body;
-  const user = req.body.user;
+  const user = req.user;
 
   if (!text) {
     return res.status(400).json({ error: 'Reja matni kiritilmadi' });
@@ -792,7 +887,7 @@ app.post('/api/todos', authenticateUser, async (req, res) => {
 // POST /api/todos/:id/toggle
 app.post('/api/todos/:id/toggle', authenticateUser, async (req, res) => {
   const { id } = req.params;
-  const user = req.body.user;
+  const user = req.user;
 
   try {
     const todo = await prisma.todo.findFirst({
@@ -825,7 +920,7 @@ app.post('/api/todos/:id/toggle', authenticateUser, async (req, res) => {
 // DELETE /api/todos/:id
 app.delete('/api/todos/:id', authenticateUser, async (req, res) => {
   const { id } = req.params;
-  const user = req.body.user;
+  const user = req.user;
 
   try {
     const todo = await prisma.todo.findFirst({
@@ -855,7 +950,7 @@ app.delete('/api/todos/:id', authenticateUser, async (req, res) => {
 
 // GET /api/activities
 app.get('/api/activities', authenticateUser, async (req, res) => {
-  const user = req.body.user;
+  const user = req.user;
   try {
     const logs = await prisma.activityLog.findMany({
       where: { userId: user.id },
@@ -878,7 +973,7 @@ app.get('/api/activities', authenticateUser, async (req, res) => {
 
 // GET /api/repetition/plans
 app.get('/api/repetition/plans', authenticateUser, async (req, res) => {
-  const user = req.body.user;
+  const user = req.user;
   try {
     const plans = await prisma.repetitionPlan.findMany({
       where: { userId: user.id },
@@ -902,96 +997,121 @@ app.get('/api/repetition/plans', authenticateUser, async (req, res) => {
 
 // POST /api/repetition/plans
 app.post('/api/repetition/plans', authenticateUser, async (req, res) => {
-  const user = req.body.user;
+  const user = req.user;
   const { surahId, days, times, startDate } = req.body;
 
   if (!surahId || !days || !Array.isArray(days) || !times || !Array.isArray(times)) {
     return res.status(400).json({ error: 'Noto\'g\'ri ma\'lumotlar yuborildi' });
   }
 
+  const sId = parseId(surahId.toString());
+
+  if (!sId) {
+    return res.status(400).json({ error: 'Noto\'g\'ri sura ID' });
+  }
+
   try {
+    const surahExists = await prisma.surah.findUnique({
+      where: { id: sId }
+    });
+
+    if (!surahExists) {
+      return res.status(404).json({ error: 'Sura topilmadi' });
+    }
+
     const sDate = startDate ? new Date(startDate) : new Date();
     const baseDateString = sDate.toISOString().split('T')[0];
 
-    // Find existing or create plan
-    let plan = await prisma.repetitionPlan.findUnique({
-      where: {
-        userId_surahId: { userId: user.id, surahId: parseInt(surahId) }
-      }
-    });
-
-    if (plan) {
-      plan = await prisma.repetitionPlan.update({
-        where: { id: plan.id },
-        data: {
-          days: JSON.stringify(days),
-          times: JSON.stringify(times),
-          startDate: sDate
+    const updatedPlan = await prisma.$transaction(async (tx) => {
+      // Find existing or create plan
+      let plan = await tx.repetitionPlan.findUnique({
+        where: {
+          userId_surahId: { userId: user.id, surahId: sId }
         }
       });
-    } else {
-      plan = await prisma.repetitionPlan.create({
-        data: {
-          userId: user.id,
-          surahId: parseInt(surahId),
-          days: JSON.stringify(days),
-          times: JSON.stringify(times),
-          startDate: sDate
-        }
-      });
-    }
 
-    // Synchronize sessions
-    const generatedSessions = [];
-    const baseDateTime = new Date(baseDateString);
-    
-    for (const day of days) {
-      const targetDateObj = new Date(baseDateTime);
-      targetDateObj.setDate(targetDateObj.getDate() + (day - 1));
-      const targetDateStr = targetDateObj.toISOString().split('T')[0];
-      
-      for (const time of times) {
-        generatedSessions.push({
-          dayNumber: day,
-          date: targetDateStr,
-          time: time
+      if (plan) {
+        plan = await tx.repetitionPlan.update({
+          where: { id: plan.id },
+          data: {
+            days: JSON.stringify(days),
+            times: JSON.stringify(times),
+            startDate: sDate
+          }
+        });
+      } else {
+        plan = await tx.repetitionPlan.create({
+          data: {
+            userId: user.id,
+            surahId: sId,
+            days: JSON.stringify(days),
+            times: JSON.stringify(times),
+            startDate: sDate
+          }
         });
       }
-    }
 
-    const existingSessions = await prisma.repetitionSession.findMany({
-      where: { planId: plan.id }
-    });
-
-    for (const session of existingSessions) {
-      const isStillInSchedule = generatedSessions.some(gs => gs.date === session.date && gs.time === session.time);
-      if (!isStillInSchedule && session.status === 'Kutilmoqda') {
-        await prisma.repetitionSession.delete({ where: { id: session.id } });
+      // Synchronize sessions using timezone-safe UTC arithmetic
+      const generatedSessions: { dayNumber: number; date: string; time: string }[] = [];
+      const baseDateTime = new Date(baseDateString + 'T00:00:00Z');
+      
+      for (const day of days) {
+        const targetDateObj = new Date(baseDateTime.getTime());
+        targetDateObj.setUTCDate(targetDateObj.getUTCDate() + (day - 1));
+        const targetDateStr = targetDateObj.toISOString().split('T')[0];
+        
+        for (const time of times) {
+          generatedSessions.push({
+            dayNumber: day,
+            date: targetDateStr,
+            time: time
+          });
+        }
       }
-    }
 
-    for (const gs of generatedSessions) {
-      const exists = existingSessions.some(es => es.date === gs.date && es.time === gs.time);
-      if (!exists) {
-        await prisma.repetitionSession.create({
-          data: {
+      const existingSessions = await tx.repetitionSession.findMany({
+        where: { planId: plan.id }
+      });
+
+      // Filter sessions to delete
+      const sessionsToDelete = existingSessions.filter(session => {
+        const isStillInSchedule = generatedSessions.some(gs => gs.date === session.date && gs.time === session.time);
+        return !isStillInSchedule && session.status === 'Kutilmoqda';
+      });
+
+      if (sessionsToDelete.length > 0) {
+        await tx.repetitionSession.deleteMany({
+          where: {
+            id: { in: sessionsToDelete.map(s => s.id) }
+          }
+        });
+      }
+
+      // Filter sessions to create
+      const sessionsToCreate = generatedSessions.filter(gs => {
+        return !existingSessions.some(es => es.date === gs.date && es.time === gs.time);
+      });
+
+      if (sessionsToCreate.length > 0) {
+        await tx.repetitionSession.createMany({
+          data: sessionsToCreate.map(gs => ({
             userId: user.id,
             planId: plan.id,
             dayNumber: gs.dayNumber,
             date: gs.date,
             time: gs.time,
             status: 'Kutilmoqda'
-          }
+          }))
         });
       }
-    }
 
-    const updatedPlan = await prisma.repetitionPlan.findUnique({
-      where: { id: plan.id },
-      include: {
-        surah: true,
-        sessions: { orderBy: [{ date: 'asc' }, { time: 'asc' }] }
-      }
+      return tx.repetitionPlan.findUnique({
+        where: { id: plan.id },
+        include: {
+          surah: true,
+          sessions: { orderBy: [{ date: 'asc' }, { time: 'asc' }] }
+        }
+      });
     });
 
     res.json(updatedPlan);
@@ -1003,13 +1123,18 @@ app.post('/api/repetition/plans', authenticateUser, async (req, res) => {
 
 // POST /api/repetition/sessions/:id/status
 app.post('/api/repetition/sessions/:id/status', authenticateUser, async (req, res) => {
-  const user = req.body.user;
-  const { id } = req.params;
+  const user = req.user;
+  const sessionId = parseId(req.params.id);
   const { status } = req.body;
+
+  if (!sessionId) return res.status(400).json({ error: 'Noto\'g\'ri session ID' });
+  if (!status || !VALID_SESSION_STATUSES.includes(status)) {
+    return res.status(400).json({ error: 'Noto\'g\'ri status. Ruxsat etilgan: ' + VALID_SESSION_STATUSES.join(', ') });
+  }
 
   try {
     const session = await prisma.repetitionSession.findFirst({
-      where: { id: parseInt(id), userId: user.id }
+      where: { id: sessionId, userId: user.id }
     });
 
     if (!session) {
@@ -1030,12 +1155,14 @@ app.post('/api/repetition/sessions/:id/status', authenticateUser, async (req, re
 
 // DELETE /api/repetition/plans/:id
 app.delete('/api/repetition/plans/:id', authenticateUser, async (req, res) => {
-  const user = req.body.user;
-  const { id } = req.params;
+  const user = req.user;
+  const planId = parseId(req.params.id);
+
+  if (!planId) return res.status(400).json({ error: 'Noto\'g\'ri plan ID' });
 
   try {
     const plan = await prisma.repetitionPlan.findFirst({
-      where: { id: parseInt(id), userId: user.id }
+      where: { id: planId, userId: user.id }
     });
 
     if (!plan) return res.status(404).json({ error: 'Reja topilmadi' });
