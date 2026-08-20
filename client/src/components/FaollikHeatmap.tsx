@@ -1,21 +1,36 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 interface FaollikHeatmapProps {
   activities: Record<string, number>;
 }
 
 export const FaollikHeatmap: React.FC<FaollikHeatmapProps> = ({ activities }) => {
+  const [filter, setFilter] = useState<'haftalik' | 'oylik' | 'yillik' | 'butun_davr'>(() => {
+    return (localStorage.getItem('heatmapFilter') as any) || 'yillik';
+  });
+
+  const handleFilterChange = (newFilter: 'haftalik' | 'oylik' | 'yillik' | 'butun_davr') => {
+    setFilter(newFilter);
+    localStorage.setItem('heatmapFilter', newFilter);
+  };
+
   const dates: { dateStr: string; count: number; dayOfWeek: number }[] = [];
   const today = new Date();
   
+  let columnsCount = 53;
+  if (filter === 'haftalik') columnsCount = 2;
+  else if (filter === 'oylik') columnsCount = 6;
+  
+  const totalDaysToRender = columnsCount * 7;
+  
   const startDay = new Date();
-  startDay.setDate(today.getDate() - 364);
+  startDay.setDate(today.getDate() - (totalDaysToRender - 7));
   
   const dayOfWeek = startDay.getDay();
   const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
   startDay.setDate(startDay.getDate() - diffToMonday);
 
-  for (let i = 0; i < 371; i++) {
+  for (let i = 0; i < totalDaysToRender; i++) {
     const d = new Date(startDay);
     d.setDate(startDay.getDate() + i);
     
@@ -39,9 +54,42 @@ export const FaollikHeatmap: React.FC<FaollikHeatmapProps> = ({ activities }) =>
 
   return (
     <div className="heatmap-wrapper" style={{ marginBottom: '24px' }}>
-      <div className="heatmap-header">
-        <span className="heatmap-title">📊 Kunlik Faollik Kalendari</span>
-        <div className="heatmap-legend">
+      <div className="heatmap-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <span className="heatmap-title" style={{ margin: 0 }}>📊 Kunlik Faollik Kalendari</span>
+          <div style={{ display: 'flex', gap: '4px', marginTop: '2px' }}>
+            <button 
+              onClick={() => handleFilterChange('haftalik')} 
+              className={`filter-btn ${filter === 'haftalik' ? 'active' : ''}`}
+              style={{ fontSize: '10px', padding: '3px 8px', borderRadius: '8px' }}
+            >
+              Haftalik
+            </button>
+            <button 
+              onClick={() => handleFilterChange('oylik')} 
+              className={`filter-btn ${filter === 'oylik' ? 'active' : ''}`}
+              style={{ fontSize: '10px', padding: '3px 8px', borderRadius: '8px' }}
+            >
+              Oylik
+            </button>
+            <button 
+              onClick={() => handleFilterChange('yillik')} 
+              className={`filter-btn ${filter === 'yillik' ? 'active' : ''}`}
+              style={{ fontSize: '10px', padding: '3px 8px', borderRadius: '8px' }}
+            >
+              Yillik
+            </button>
+            <button 
+              onClick={() => handleFilterChange('butun_davr')} 
+              className={`filter-btn ${filter === 'butun_davr' ? 'active' : ''}`}
+              style={{ fontSize: '10px', padding: '3px 8px', borderRadius: '8px' }}
+            >
+              Butun davr
+            </button>
+          </div>
+        </div>
+        
+        <div className="heatmap-legend" style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px' }}>
           <span>Kam</span>
           <div className="legend-cell level-0"></div>
           <div className="legend-cell level-1"></div>
@@ -93,3 +141,4 @@ export const FaollikHeatmap: React.FC<FaollikHeatmapProps> = ({ activities }) =>
     </div>
   );
 };
+export default FaollikHeatmap;

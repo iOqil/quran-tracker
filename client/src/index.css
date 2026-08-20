@@ -1011,6 +1011,7 @@ body {
   transition: var(--transition);
   flex: 1;
   height: 100%;
+  text-decoration: none;
 }
 
 .nav-item:hover, .nav-item.active {
@@ -1247,6 +1248,7 @@ body {
     cursor: pointer;
     transition: var(--transition);
     width: 100%;
+    text-decoration: none;
   }
 
   .sidebar-nav-item:hover {
