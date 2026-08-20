@@ -3,6 +3,7 @@ import { useOutletContext } from 'react-router-dom';
 import { Search, Filter, Trash, Check } from 'lucide-react';
 import { FaollikHeatmap } from '../components/FaollikHeatmap';
 import { SurahDetailModal } from '../components/SurahDetailModal';
+import { CircularProgress } from '../components/CircularProgress';
 import type { Surah, SurahDetail, Stats, UserSession } from '../types';
 
 interface SurahContextType {
@@ -142,6 +143,7 @@ export const SurahList: React.FC = () => {
     currentUser,
     surahs,
     setSurahs,
+    stats,
     setStats,
     fetchData,
     activities,
@@ -150,6 +152,11 @@ export const SurahList: React.FC = () => {
     fetchActivities,
     adminMode
   } = useOutletContext<SurahContextType>();
+
+  // Calculate percentages
+  const surahsPercent = stats ? (stats.memorizedSurahs / (stats.totalSurahs || 114)) * 100 : 0;
+  const versesPercent = stats ? (stats.memorizedVerses / (stats.totalVerses || 6236)) * 100 : 0;
+  const juzPercent = stats ? (stats.memorizedJuzs / 30) * 100 : 0;
 
   // Filter States
   const [searchQuery, setSearchQuery] = useState('');
@@ -403,8 +410,39 @@ export const SurahList: React.FC = () => {
 
   return (
     <div className="content-scroll-container" style={{ padding: '20px' }}>
-      {/* Activity Heatmap */}
-      <FaollikHeatmap activities={activities} />
+      
+      {/* Top dashboard section: progress stats (vertical column) & activity heatmap side-by-side */}
+      <div className="dashboard-top-grid">
+        {/* Left Column: Progress Bars column (Vertical stack) */}
+        <div className="dashboard-stats-vertical" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <CircularProgress
+            percentage={surahsPercent}
+            value={stats?.memorizedSurahs || 0}
+            total={stats?.totalSurahs || 114}
+            label="Sura"
+            color="#D84C7B"
+          />
+          <CircularProgress
+            percentage={versesPercent}
+            value={stats?.memorizedVerses || 0}
+            total={stats?.totalVerses || 6236}
+            label="Oyat"
+            color="#E57399"
+          />
+          <CircularProgress
+            percentage={juzPercent}
+            value={stats?.memorizedJuzs || 0}
+            total={30}
+            label="Juz"
+            color="#FCD3E1"
+          />
+        </div>
+        
+        {/* Right Column: Heatmap (calendar) */}
+        <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+          <FaollikHeatmap activities={activities} />
+        </div>
+      </div>
 
       {/* Admin create surah card */}
       {adminMode && currentUser.role === 'admin' && (

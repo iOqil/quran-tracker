@@ -12,11 +12,7 @@ import {
   Heart
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { CircularProgress } from './CircularProgress';
-import type { Stats } from '../types';
-
 interface LayoutProps {
-  stats: Stats | null;
   lastStudied: { name: string; time: string } | null;
   adminMode: boolean;
   setAdminMode: (mode: boolean) => void;
@@ -24,7 +20,6 @@ interface LayoutProps {
 }
 
 export const Layout: React.FC<LayoutProps> = ({
-  stats,
   lastStudied,
   adminMode,
   setAdminMode,
@@ -35,11 +30,6 @@ export const Layout: React.FC<LayoutProps> = ({
   const navigate = useNavigate();
 
   if (!currentUser) return null;
-
-  // Calculate percentages
-  const surahsPercent = stats ? (stats.memorizedSurahs / (stats.totalSurahs || 114)) * 100 : 0;
-  const versesPercent = stats ? (stats.memorizedVerses / (stats.totalVerses || 6236)) * 100 : 0;
-  const juzPercent = stats ? (stats.memorizedJuzs / 30) * 100 : 0;
 
   // Determine subheader title based on route
   let subtitle = "Suralar Ro'yxati";
@@ -158,30 +148,7 @@ export const Layout: React.FC<LayoutProps> = ({
           </div>
         </header>
 
-        {/* Circular stats banner */}
-        <section className="dashboard-stats">
-          <CircularProgress
-            percentage={surahsPercent}
-            value={stats?.memorizedSurahs || 0}
-            total={stats?.totalSurahs || 114}
-            label="Sura"
-            color="#D84C7B"
-          />
-          <CircularProgress
-            percentage={versesPercent}
-            value={stats?.memorizedVerses || 0}
-            total={stats?.totalVerses || 6236}
-            label="Oyat"
-            color="#E57399"
-          />
-          <CircularProgress
-            percentage={juzPercent}
-            value={stats?.memorizedJuzs || 0}
-            total={30}
-            label="Juz"
-            color="#FCD3E1"
-          />
-        </section>
+
 
         {/* Child Pages Outlet */}
         <Outlet context={contextValues} />

@@ -125,7 +125,6 @@ const AppContent: React.FC = () => {
           path="/" 
           element={currentUser ? (
             <Layout 
-              stats={stats} 
               lastStudied={lastStudied} 
               adminMode={adminMode} 
               setAdminMode={setAdminMode} 

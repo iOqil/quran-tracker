@@ -1965,3 +1965,19 @@ input:checked + .slider::before {
   font-size: 11px;
   color: var(--text-muted);
 }
+
+/* Side-by-side dashboard layout for stats column and heatmap calendar */
+.dashboard-top-grid {
+  display: grid;
+  grid-template-columns: minmax(200px, 250px) 1fr;
+  gap: 20px;
+  margin-bottom: 24px;
+  align-items: stretch;
+}
+
+@media (max-width: 900px) {
+  .dashboard-top-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
