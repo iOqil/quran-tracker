@@ -874,6 +874,180 @@ app.get('/api/activities', authenticateUser, async (req, res) => {
   }
 });
 
+// --- REPETITION PLAN ENDPOINTS ---
+
+// GET /api/repetition/plans
+app.get('/api/repetition/plans', authenticateUser, async (req, res) => {
+  const user = req.body.user;
+  try {
+    const plans = await prisma.repetitionPlan.findMany({
+      where: { userId: user.id },
+      include: {
+        surah: true,
+        sessions: {
+          orderBy: [
+            { date: 'asc' },
+            { time: 'asc' }
+          ]
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(plans);
+  } catch (error) {
+    console.error('Error fetching repetition plans:', error);
+    res.status(500).json({ error: 'Takrorlash rejalarini olishda xatolik' });
+  }
+});
+
+// POST /api/repetition/plans
+app.post('/api/repetition/plans', authenticateUser, async (req, res) => {
+  const user = req.body.user;
+  const { surahId, days, times, startDate } = req.body;
+
+  if (!surahId || !days || !Array.isArray(days) || !times || !Array.isArray(times)) {
+    return res.status(400).json({ error: 'Noto\'g\'ri ma\'lumotlar yuborildi' });
+  }
+
+  try {
+    const sDate = startDate ? new Date(startDate) : new Date();
+    const baseDateString = sDate.toISOString().split('T')[0];
+
+    // Find existing or create plan
+    let plan = await prisma.repetitionPlan.findUnique({
+      where: {
+        userId_surahId: { userId: user.id, surahId: parseInt(surahId) }
+      }
+    });
+
+    if (plan) {
+      plan = await prisma.repetitionPlan.update({
+        where: { id: plan.id },
+        data: {
+          days: JSON.stringify(days),
+          times: JSON.stringify(times),
+          startDate: sDate
+        }
+      });
+    } else {
+      plan = await prisma.repetitionPlan.create({
+        data: {
+          userId: user.id,
+          surahId: parseInt(surahId),
+          days: JSON.stringify(days),
+          times: JSON.stringify(times),
+          startDate: sDate
+        }
+      });
+    }
+
+    // Synchronize sessions
+    const generatedSessions = [];
+    const baseDateTime = new Date(baseDateString);
+    
+    for (const day of days) {
+      const targetDateObj = new Date(baseDateTime);
+      targetDateObj.setDate(targetDateObj.getDate() + (day - 1));
+      const targetDateStr = targetDateObj.toISOString().split('T')[0];
+      
+      for (const time of times) {
+        generatedSessions.push({
+          dayNumber: day,
+          date: targetDateStr,
+          time: time
+        });
+      }
+    }
+
+    const existingSessions = await prisma.repetitionSession.findMany({
+      where: { planId: plan.id }
+    });
+
+    for (const session of existingSessions) {
+      const isStillInSchedule = generatedSessions.some(gs => gs.date === session.date && gs.time === session.time);
+      if (!isStillInSchedule && session.status === 'Kutilmoqda') {
+        await prisma.repetitionSession.delete({ where: { id: session.id } });
+      }
+    }
+
+    for (const gs of generatedSessions) {
+      const exists = existingSessions.some(es => es.date === gs.date && es.time === gs.time);
+      if (!exists) {
+        await prisma.repetitionSession.create({
+          data: {
+            userId: user.id,
+            planId: plan.id,
+            dayNumber: gs.dayNumber,
+            date: gs.date,
+            time: gs.time,
+            status: 'Kutilmoqda'
+          }
+        });
+      }
+    }
+
+    const updatedPlan = await prisma.repetitionPlan.findUnique({
+      where: { id: plan.id },
+      include: {
+        surah: true,
+        sessions: { orderBy: [{ date: 'asc' }, { time: 'asc' }] }
+      }
+    });
+
+    res.json(updatedPlan);
+  } catch (error) {
+    console.error('Error saving repetition plan:', error);
+    res.status(500).json({ error: 'Rejani saqlashda xatolik yuz berdi' });
+  }
+});
+
+// POST /api/repetition/sessions/:id/status
+app.post('/api/repetition/sessions/:id/status', authenticateUser, async (req, res) => {
+  const user = req.body.user;
+  const { id } = req.params;
+  const { status } = req.body;
+
+  try {
+    const session = await prisma.repetitionSession.findFirst({
+      where: { id: parseInt(id), userId: user.id }
+    });
+
+    if (!session) {
+      return res.status(404).json({ error: 'Session topilmadi' });
+    }
+
+    const updated = await prisma.repetitionSession.update({
+      where: { id: session.id },
+      data: { status }
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error('Error updating session status:', error);
+    res.status(500).json({ error: 'Statusni yangilashda xatolik' });
+  }
+});
+
+// DELETE /api/repetition/plans/:id
+app.delete('/api/repetition/plans/:id', authenticateUser, async (req, res) => {
+  const user = req.body.user;
+  const { id } = req.params;
+
+  try {
+    const plan = await prisma.repetitionPlan.findFirst({
+      where: { id: parseInt(id), userId: user.id }
+    });
+
+    if (!plan) return res.status(404).json({ error: 'Reja topilmadi' });
+
+    await prisma.repetitionPlan.delete({ where: { id: plan.id } });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting plan:', error);
+    res.status(500).json({ error: 'Rejani o\'chirishda xatolik' });
+  }
+});
+
 // Serve client static assets in production
 const clientDistPath = path.join(__dirname, '../../client/dist');
 app.use(express.static(clientDistPath));

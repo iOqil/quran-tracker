@@ -19,7 +19,10 @@ import {
   KeyRound,
   LogOut,
   Users,
-  CheckSquare
+  CheckSquare,
+  Plus,
+  AlertCircle,
+  Trash2
 } from 'lucide-react';
 
 // Reusable Circular Progress SVG Component
@@ -103,6 +106,25 @@ interface SurahDetail {
   juz: number;
   isCustom: boolean;
   memorizedVerses: number[];
+}
+
+interface RepetitionSession {
+  id: number;
+  planId: number;
+  dayNumber: number;
+  date: string;
+  time: string;
+  status: 'Bajarildi' | 'Qoniqarli' | 'O‘tkazib yuborildi' | 'Kutilmoqda';
+}
+
+interface RepetitionPlan {
+  id: number;
+  surahId: number;
+  surah: Surah;
+  startDate: string;
+  days: string;
+  times: string;
+  sessions: RepetitionSession[];
 }
 
 interface Stats {
@@ -316,7 +338,12 @@ function App() {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [newReminderTime, setNewReminderTime] = useState('08:00');
   const [newReminderName, setNewReminderName] = useState('');
-  const [repChecks, setRepChecks] = useState<Record<number, Record<string, boolean>>>({});
+  
+  // Repetition Plan state
+  const [repetitionPlans, setRepetitionPlans] = useState<RepetitionPlan[]>([]);
+  const [repPlanFormSurah, setRepPlanFormSurah] = useState<string>('');
+  const [repPlanFormDays, setRepPlanFormDays] = useState<string>('1, 2, 3, 4, 7, 14, 30');
+  const [repPlanFormTimes, setRepPlanFormTimes] = useState<string>('08:00, 20:30');
 
   // Todo & Heatmap states
   const [todos, setTodos] = useState<Todo[]>([]);
@@ -350,14 +377,6 @@ function App() {
         setReminders(defaultReminders);
         localStorage.setItem(`userReminders_${user.id}`, JSON.stringify(defaultReminders));
       }
-
-      // Load repetition checks
-      const savedChecks = localStorage.getItem(`repetitionChecks_${user.id}`);
-      if (savedChecks) {
-        setRepChecks(JSON.parse(savedChecks));
-      } else {
-        setRepChecks({});
-      }
     }
   }, []);
 
@@ -370,12 +389,16 @@ function App() {
       const headers = { 'Authorization': `Bearer ${activeUser.token}` };
       
       const surahsRes = await fetch('/api/surahs', { headers });
-      const surahsData = await surahsRes.json();
-      setSurahs(surahsData);
-
       const statsRes = await fetch('/api/stats', { headers });
-      const statsData = await statsRes.json();
-      setStats(statsData);
+      const todosRes = await fetch('/api/todos', { headers });
+      const activitiesRes = await fetch('/api/activities', { headers });
+      const plansRes = await fetch('/api/repetition/plans', { headers });
+
+      if (surahsRes.ok) setSurahs(await surahsRes.json());
+      if (statsRes.ok) setStats(await statsRes.json());
+      if (todosRes.ok) setTodos(await todosRes.json());
+      if (activitiesRes.ok) setActivities(await activitiesRes.json());
+      if (plansRes.ok) setRepetitionPlans(await plansRes.json());
 
       // Fetch users list for Admin tab
       if (activeUser.role === 'admin') {
@@ -383,10 +406,6 @@ function App() {
         const usersData = await usersRes.json();
         setAdminUsers(usersData);
       }
-
-      // Fetch Todos & Activities
-      await fetchTodos(activeUser);
-      await fetchActivities(activeUser);
     } catch (error) {
       console.error('Error fetching data:', error);
     }
@@ -462,8 +481,7 @@ function App() {
         setReminders(defaultReminders);
         localStorage.setItem(`userReminders_${data.id}`, JSON.stringify(defaultReminders));
       }
-      const savedChecks = localStorage.getItem(`repetitionChecks_${data.id}`);
-      setRepChecks(savedChecks ? JSON.parse(savedChecks) : {});
+      // legacy checks removed
 
       fetchData(data);
     } catch (error) {
@@ -518,7 +536,7 @@ function App() {
       ];
       setReminders(defaultReminders);
       localStorage.setItem(`userReminders_${data.id}`, JSON.stringify(defaultReminders));
-      setRepChecks({});
+
       localStorage.setItem(`repetitionChecks_${data.id}`, JSON.stringify({}));
 
       fetchData(data);
@@ -844,34 +862,6 @@ function App() {
     localStorage.setItem(`userReminders_${currentUser.id}`, JSON.stringify(updated));
   };
 
-  const handleToggleRepCheck = (surahId: number, dayKey: string) => {
-    if (!currentUser) return;
-    const currentSurahChecks = repChecks[surahId] || {};
-    const updatedChecks = {
-      ...repChecks,
-      [surahId]: {
-        ...currentSurahChecks,
-        [dayKey]: !currentSurahChecks[dayKey]
-      }
-    };
-    setRepChecks(updatedChecks);
-    localStorage.setItem(`repetitionChecks_${currentUser.id}`, JSON.stringify(updatedChecks));
-  };
-
-  // Todo & Activity fetches and CRUD
-  const fetchTodos = async (user?: UserSession) => {
-    const activeUser = user || currentUser;
-    if (!activeUser) return;
-    try {
-      const headers = { 'Authorization': `Bearer ${activeUser.token}` };
-      const res = await fetch('/api/todos', { headers });
-      const data = await res.json();
-      if (Array.isArray(data)) setTodos(data);
-    } catch (e) {
-      console.error('Error fetching todos:', e);
-    }
-  };
-
   const fetchActivities = async (user?: UserSession) => {
     const activeUser = user || currentUser;
     if (!activeUser) return;
@@ -919,14 +909,10 @@ function App() {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${currentUser.token}` }
       });
-      if (res.ok) {
-        fetchActivities();
-      } else {
-        fetchTodos();
-      }
+      if (!res.ok) fetchData();
     } catch (err) {
       console.error('Error toggling todo:', err);
-      fetchTodos();
+      fetchData();
     }
   };
 
@@ -938,14 +924,91 @@ function App() {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${currentUser.token}` }
       });
-      if (res.ok) {
-        fetchActivities();
-      } else {
-        fetchTodos();
-      }
+      if (!res.ok) fetchData();
     } catch (err) {
       console.error('Error deleting todo:', err);
-      fetchTodos();
+      fetchData();
+    }
+  };
+
+  const handleCreateRepetitionPlan = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser || !repPlanFormSurah) return;
+    
+    const parsedDays = repPlanFormDays.split(',').map(d => parseInt(d.trim())).filter(d => !isNaN(d));
+    const parsedTimes = repPlanFormTimes.split(',').map(t => t.trim()).filter(t => t.length > 0);
+    
+    if (parsedDays.length === 0 || parsedTimes.length === 0) {
+      alert("Kunlar yoki vaqtlar noto'g'ri kiritildi.");
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/repetition/plans', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${currentUser.token}`
+        },
+        body: JSON.stringify({
+          surahId: parseInt(repPlanFormSurah),
+          days: parsedDays,
+          times: parsedTimes
+        })
+      });
+      if (res.ok) {
+        fetchData();
+        setRepPlanFormSurah('');
+      } else {
+        const err = await res.json();
+        alert(err.error || "Xatolik yuz berdi");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Xatolik yuz berdi");
+    }
+  };
+
+  const handleDeleteRepetitionPlan = async (id: number) => {
+    if (!currentUser) return;
+    if (!window.confirm("Bu rejani o'chirishni tasdiqlaysizmi? Barcha takrorlashlar tarixi o'chib ketadi!")) return;
+    
+    try {
+      const res = await fetch(`/api/repetition/plans/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${currentUser.token}` }
+      });
+      if (res.ok) {
+        setRepetitionPlans(repetitionPlans.filter(p => p.id !== id));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleUpdateSessionStatus = async (sessionId: number, status: string) => {
+    if (!currentUser) return;
+    
+    setRepetitionPlans(plans => plans.map(p => ({
+      ...p,
+      sessions: p.sessions.map(s => s.id === sessionId ? { ...s, status: status as any } : s)
+    })));
+
+    try {
+      const res = await fetch(`/api/repetition/sessions/${sessionId}/status`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${currentUser.token}`
+        },
+        body: JSON.stringify({ status })
+      });
+      if (!res.ok) {
+        fetchData();
+      }
+    } catch (err) {
+      console.error(err);
+      fetchData();
     }
   };
 
@@ -1730,52 +1793,152 @@ function App() {
                 </form>
               </div>
 
-              <div className="repetition-table-pane">
-                <h3 className="surah-section-title" style={{ margin: '0 0 12px 0' }}>Takrorlash Rejasi (Milestones)</h3>
-                
-                {surahs.filter(s => s.isCompleted).length > 0 ? (
+              <div className="repetition-table-pane" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <h3 className="surah-section-title" style={{ margin: '0' }}>Takrorlash Rejasi</h3>
+
+                {/* Plan Creator Form */}
+                <form onSubmit={handleCreateRepetitionPlan} className="add-todo-form" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <select
+                      className="auth-input"
+                      value={repPlanFormSurah}
+                      onChange={e => setRepPlanFormSurah(e.target.value)}
+                      style={{ flex: 1, minWidth: '150px' }}
+                      required
+                    >
+                      <option value="">-- Sura tanlang --</option>
+                      {surahs.map(s => (
+                        <option key={s.id} value={s.id}>{s.name} ({s.verseCount} oyat)</option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      className="auth-input"
+                      value={repPlanFormDays}
+                      onChange={e => setRepPlanFormDays(e.target.value)}
+                      placeholder="Kunlar (m-n: 1, 3, 7)"
+                      style={{ flex: 1, minWidth: '150px' }}
+                      required
+                    />
+                    <input
+                      type="text"
+                      className="auth-input"
+                      value={repPlanFormTimes}
+                      onChange={e => setRepPlanFormTimes(e.target.value)}
+                      placeholder="Vaqtlar (m-n: 08:00, 20:30)"
+                      style={{ flex: 1, minWidth: '150px' }}
+                      required
+                    />
+                  </div>
+                  <button type="submit" className="add-todo-btn" style={{ alignSelf: 'flex-start' }}>
+                    <Plus size={16} /> Reja yaratish
+                  </button>
+                </form>
+
+                {/* Actionable Sessions (Today + Overdue) */}
+                {repetitionPlans.flatMap(p => p.sessions).some(s => s.status === 'Kutilmoqda' && s.date <= new Date().toISOString().split('T')[0]) && (
+                  <div className="actionable-sessions-panel" style={{ backgroundColor: '#fff0f3', padding: '15px', borderRadius: '12px', border: '1px solid var(--primary-light)' }}>
+                    <h4 style={{ margin: '0 0 10px 0', fontSize: '13px', color: 'var(--primary-dark)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <AlertCircle size={16} /> Bugungi va Kechikkan Takrorlashlar
+                    </h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {repetitionPlans.map(plan => {
+                        const todayStr = new Date().toISOString().split('T')[0];
+                        const actionable = plan.sessions.filter(s => s.status === 'Kutilmoqda' && s.date <= todayStr);
+                        if (actionable.length === 0) return null;
+                        
+                        return actionable.map(session => (
+                          <div key={session.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', padding: '10px 12px', borderRadius: '8px', border: '1px solid #ffe3e9', fontSize: '13px', flexWrap: 'wrap', gap: '8px' }}>
+                            <div>
+                              <strong style={{ color: 'var(--text-primary)' }}>{plan.surah.name}</strong> 
+                              <span style={{ color: 'var(--text-muted)', marginLeft: '6px' }}>
+                                ({session.dayNumber}-kun · {session.time}) 
+                                {session.date < todayStr && <span style={{ color: '#e74c3c', marginLeft: '4px', fontSize: '11px', fontWeight: 600 }}>Kechikkan</span>}
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', gap: '4px' }}>
+                              <button onClick={() => handleUpdateSessionStatus(session.id, 'Bajarildi')} className="status-pill btn-success">Bajarildi</button>
+                              <button onClick={() => handleUpdateSessionStatus(session.id, 'Qoniqarli')} className="status-pill btn-warning">Qoniqarli</button>
+                              <button onClick={() => handleUpdateSessionStatus(session.id, 'O‘tkazib yuborildi')} className="status-pill btn-danger">O'tkazib yub.</button>
+                            </div>
+                          </div>
+                        ));
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Active Plans List */}
+                {repetitionPlans.length > 0 ? (
                   <div className="repetition-flex-list">
-                    {surahs.filter(s => s.isCompleted).map((s) => {
-                      const checks = repChecks[s.id] || {};
+                    {repetitionPlans.map((plan) => {
+                      const completedCount = plan.sessions.filter(s => s.status === 'Bajarildi' || s.status === 'Qoniqarli').length;
+                      const progressPercent = Math.round((completedCount / (plan.sessions.length || 1)) * 100);
+
+                      // Determine next session
+                      const now = new Date();
+                      const todayStr = now.toISOString().split('T')[0];
+                      const pendingSessions = plan.sessions.filter(s => s.status === 'Kutilmoqda');
+                      
+                      let nextLabel = "Barcha takrorlashlar tugadi";
+                      if (pendingSessions.length > 0) {
+                        const nextSession = pendingSessions.sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))[0];
+                        if (nextSession.date === todayStr) {
+                          nextLabel = `Bugun · ${nextSession.time}`;
+                        } else if (nextSession.date < todayStr) {
+                          nextLabel = `Kechikkan · ${nextSession.date}`;
+                        } else {
+                          nextLabel = `${nextSession.date} · ${nextSession.time}`;
+                        }
+                      }
+
+                      // Group sessions by date for the contribution graph
+                      const groupedByDate: Record<string, typeof plan.sessions> = {};
+                      plan.sessions.forEach(s => {
+                        if (!groupedByDate[s.date]) groupedByDate[s.date] = [];
+                        groupedByDate[s.date].push(s);
+                      });
+
+                      const uniqueDates = Object.keys(groupedByDate).sort();
+
                       return (
-                        <div key={s.id} className="repetition-card" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '10px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--primary-dark)' }}>{s.name}</span>
-                            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{s.verseCount}-oyat ({s.juz}-juz)</span>
+                        <div key={plan.id} className="repetition-card" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '10px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div>
+                              <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--primary-dark)', display: 'block' }}>{plan.surah.name}</span>
+                              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{plan.surah.verseCount}-oyat · {plan.surah.juz}-juz</span>
+                            </div>
+                            <button onClick={() => handleDeleteRepetitionPlan(plan.id)} style={{ color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
+                              <Trash2 size={16} />
+                            </button>
                           </div>
 
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginTop: '4px' }}>
-                            {[
-                              { key: 'day1', label: '1-kun' },
-                              { key: 'day7', label: '7-kun' },
-                              { key: 'day30', label: '30-kun' }
-                            ].map((milestone) => {
-                              const isChecked = !!checks[milestone.key];
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Progress: <strong style={{color: 'var(--primary-dark)'}}>{completedCount} / {plan.sessions.length}</strong> ({progressPercent}%)</span>
+                            <span style={{ fontSize: '11px', color: 'var(--primary-dark)', fontWeight: 600, backgroundColor: 'var(--primary-light)', padding: '2px 8px', borderRadius: '12px' }}>
+                              Keyingi: {nextLabel}
+                            </span>
+                          </div>
+
+                          {/* GitHub-style Contribution Graph */}
+                          <div className="repetition-grid-wrapper">
+                            {uniqueDates.map(dateStr => {
+                              const daySessions = groupedByDate[dateStr];
+                              let levelClass = 'level-0';
+
+                              if (daySessions.every(s => s.status === 'Bajarildi')) levelClass = 'level-4';
+                              else if (daySessions.some(s => s.status === 'O‘tkazib yuborildi')) levelClass = 'level-red';
+                              else if (daySessions.some(s => s.status === 'Bajarildi' || s.status === 'Qoniqarli')) levelClass = 'level-2';
+                              else if (dateStr < todayStr && daySessions.some(s => s.status === 'Kutilmoqda')) levelClass = 'level-red';
+
+                              const isToday = dateStr === todayStr;
+
                               return (
-                                <button
-                                  key={milestone.key}
-                                  type="button"
-                                  onClick={() => handleToggleRepCheck(s.id, milestone.key)}
-                                  style={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: 'center',
-                                    gap: '4px',
-                                    padding: '6px',
-                                    borderRadius: '8px',
-                                    border: '1.5px solid',
-                                    borderColor: isChecked ? 'var(--primary)' : 'var(--border-color)',
-                                    backgroundColor: isChecked ? 'var(--primary-light)' : '#FFFFFF',
-                                    color: isChecked ? 'var(--primary-dark)' : 'var(--text-muted)',
-                                    cursor: 'pointer',
-                                    fontSize: '11px',
-                                    fontWeight: 700,
-                                    transition: 'var(--transition)'
-                                  }}
-                                >
-                                  <span>{milestone.label}</span>
-                                  {isChecked ? <Check size={12} strokeWidth={3} /> : <span style={{ width: 12, height: 12 }} />}
-                                </button>
+                                <div 
+                                  key={dateStr} 
+                                  className={`repetition-cell ${levelClass} ${isToday ? 'is-today' : ''}`}
+                                  title={`${dateStr}\n${daySessions.map(s => `${s.time}: ${s.status}`).join('\n')}`}
+                                ></div>
                               );
                             })}
                           </div>
@@ -1786,8 +1949,8 @@ function App() {
                 ) : (
                   <div className="achievement-card" style={{ padding: '20px', backgroundColor: 'var(--bg-app)', border: '1px dashed var(--primary)' }}>
                     <p style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.6' }}>
-                      🌟 Sizda hali yodlangan suralar yo'q.<br />
-                      Suralarning barcha oyatlarini checkbox orqali belgilab to'liq yodlasangiz, ular bu yerda **Takrorlash Rejasi**da avtomatik paydo bo'ladi.
+                      🌟 Hozircha takrorlash rejalari yo'q.<br />
+                      Suralarni takrorlash jadvalini yaratish uchun yuqoridagi formadan foydalaning.
                     </p>
                   </div>
                 )}

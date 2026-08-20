@@ -78,19 +78,6 @@ async function main() {
     }
   });
 
-  // Seed Default Sevara user
-  await prisma.user.upsert({
-    where: { username: 'sevara' },
-    update: {},
-    create: {
-      username: 'sevara',
-      password: hashPassword('password123'),
-      role: 'user',
-      name: 'Sevara',
-      dailyTarget: '1 sura'
-    }
-  });
-
   console.log("Seeding completed.");
 }
 

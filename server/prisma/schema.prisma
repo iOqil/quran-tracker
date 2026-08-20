@@ -8,27 +8,30 @@ generator client {
 }
 
 model User {
-  id          Int             @id @default(autoincrement())
-  username    String          @unique
-  password    String
-  role        String          @default("user") // "admin" or "user"
-  name        String
-  dailyTarget String          @default("1 sura")
-  progresses  VerseProgress[]
-  todos       Todo[]
-  activities  ActivityLog[]
-  createdAt   DateTime        @default(now())
+  id                 Int                 @id @default(autoincrement())
+  username           String              @unique
+  password           String
+  role               String              @default("user") // "admin" or "user"
+  name               String
+  dailyTarget        String              @default("1 sura")
+  progresses         VerseProgress[]
+  todos              Todo[]
+  activities         ActivityLog[]
+  repetitionPlans    RepetitionPlan[]
+  repetitionSessions RepetitionSession[]
+  createdAt          DateTime            @default(now())
 }
 
 model Surah {
-  id         Int             @id @default(autoincrement())
-  number     Int             @unique
-  name       String
-  verseCount Int
-  juz        Int
-  isCustom   Boolean         @default(false)
-  progresses VerseProgress[]
-  createdAt  DateTime        @default(now())
+  id              Int              @id @default(autoincrement())
+  number          Int              @unique
+  name            String
+  verseCount      Int
+  juz             Int
+  isCustom        Boolean          @default(false)
+  progresses      VerseProgress[]
+  repetitionPlans RepetitionPlan[]
+  createdAt       DateTime         @default(now())
 }
 
 model VerseProgress {
@@ -67,4 +70,36 @@ model ActivityLog {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, date, type])
+}
+
+model RepetitionPlan {
+  id        Int                 @id @default(autoincrement())
+  userId    Int
+  surahId   Int
+  startDate DateTime            @default(now())
+  days      String              // JSON string like "[1,2,3,4,7,14]"
+  times     String              // JSON string like "[\"08:00\",\"20:30\"]"
+  createdAt DateTime            @default(now())
+
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  surah     Surah               @relation(fields: [surahId], references: [id], onDelete: Cascade)
+  sessions  RepetitionSession[]
+
+  @@unique([userId, surahId])
+}
+
+model RepetitionSession {
+  id         Int            @id @default(autoincrement())
+  userId     Int
+  planId     Int
+  dayNumber  Int            // e.g. 1, 2, 7, 30
+  time       String         // e.g. "08:00"
+  date       String         // "YYYY-MM-DD" e.g. "2026-08-20"
+  status     String         @default("Kutilmoqda") // "Bajarildi" | "Qoniqarli" | "O‘tkazib yuborildi" | "Kutilmoqda"
+  createdAt  DateTime       @default(now())
+
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan       RepetitionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, date, time])
 }
