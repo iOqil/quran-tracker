@@ -91,7 +91,7 @@ async function autoCreateRepetitionPlan(userId: number, surahId: number, txClien
 
   if (existingPlan) return;
 
-  const days = [1, 2, 3, 4, 7, 14, 30];
+  const days = Array.from({ length: 30 }, (_, i) => i + 1);
   const times = ["09:00"];
   const sDate = new Date();
   const baseDateString = sDate.toISOString().split('T')[0];

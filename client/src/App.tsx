@@ -351,13 +351,13 @@ function App() {
   // Repetition Plan state
   const [repetitionPlans, setRepetitionPlans] = useState<RepetitionPlan[]>([]);
   const [repPlanFormSurah, setRepPlanFormSurah] = useState<string>('');
-  const [repPlanFormDays, setRepPlanFormDays] = useState<string>('1, 2, 3, 4, 7, 14, 30');
-  const [repPlanFormTimes, setRepPlanFormTimes] = useState<string>('08:00, 20:30');
+  const [repPlanFormDays, setRepPlanFormDays] = useState<string>('30');
+  const [repPlanFormTimes, setRepPlanFormTimes] = useState<string>('09:00');
 
   // Repetition Plan inline edit states
   const [editingPlanId, setEditingPlanId] = useState<number | null>(null);
-  const [editPlanDays, setEditPlanDays] = useState<string>('');
-  const [editPlanTimes, setEditPlanTimes] = useState<string>('');
+  const [editPlanDays, setEditPlanDays] = useState<string>('30');
+  const [editPlanTimes, setEditPlanTimes] = useState<string>('09:00');
 
   // Todo & Heatmap states
   const [todos, setTodos] = useState<Todo[]>([]);
@@ -949,11 +949,16 @@ function App() {
     e.preventDefault();
     if (!currentUser || !repPlanFormSurah) return;
     
-    const parsedDays = repPlanFormDays.split(',').map(d => parseInt(d.trim())).filter(d => !isNaN(d));
+    const daysCount = parseInt(repPlanFormDays.trim(), 10);
+    if (isNaN(daysCount) || daysCount <= 0 || daysCount > 100) {
+      alert("Kunlar soni 1 va 100 oralig'ida bo'lishi kerak.");
+      return;
+    }
+    const parsedDays = Array.from({ length: daysCount }, (_, i) => i + 1);
     const parsedTimes = repPlanFormTimes.split(',').map(t => t.trim()).filter(t => t.length > 0);
     
-    if (parsedDays.length === 0 || parsedTimes.length === 0) {
-      alert("Kunlar yoki vaqtlar noto'g'ri kiritildi.");
+    if (parsedTimes.length === 0) {
+      alert("Takrorlash vaqti kiritilishi shart.");
       return;
     }
 
@@ -1004,9 +1009,9 @@ function App() {
     setEditingPlanId(plan.id);
     try {
       const parsedDays = JSON.parse(plan.days);
-      setEditPlanDays(Array.isArray(parsedDays) ? parsedDays.join(', ') : plan.days);
+      setEditPlanDays(Array.isArray(parsedDays) ? parsedDays.length.toString() : '30');
     } catch {
-      setEditPlanDays(plan.days);
+      setEditPlanDays('30');
     }
     try {
       const parsedTimes = JSON.parse(plan.times);
@@ -1020,11 +1025,16 @@ function App() {
     e.preventDefault();
     if (!currentUser) return;
 
-    const parsedDays = editPlanDays.split(',').map(d => parseInt(d.trim())).filter(d => !isNaN(d));
+    const daysCount = parseInt(editPlanDays.trim(), 10);
+    if (isNaN(daysCount) || daysCount <= 0 || daysCount > 100) {
+      alert("Kunlar soni 1 va 100 oralig'ida bo'lishi kerak.");
+      return;
+    }
+    const parsedDays = Array.from({ length: daysCount }, (_, i) => i + 1);
     const parsedTimes = editPlanTimes.split(',').map(t => t.trim()).filter(t => t.length > 0);
 
-    if (parsedDays.length === 0 || parsedTimes.length === 0) {
-      alert("Kunlar yoki vaqtlar noto'g'ri kiritildi.");
+    if (parsedTimes.length === 0) {
+      alert("Takrorlash vaqti kiritilishi shart.");
       return;
     }
 
@@ -1883,11 +1893,13 @@ function App() {
                       }
                     </select>
                     <input
-                      type="text"
+                      type="number"
+                      min="1"
+                      max="100"
                       className="auth-input"
                       value={repPlanFormDays}
                       onChange={e => setRepPlanFormDays(e.target.value)}
-                      placeholder="Kunlar (m-n: 1, 3, 7)"
+                      placeholder="Kunlar soni (m-n: 30)"
                       style={{ flex: 1, minWidth: '150px' }}
                       required
                     />
@@ -1896,7 +1908,7 @@ function App() {
                       className="auth-input"
                       value={repPlanFormTimes}
                       onChange={e => setRepPlanFormTimes(e.target.value)}
-                      placeholder="Vaqtlar (m-n: 08:00, 20:30)"
+                      placeholder="Vaqtlar (m-n: 09:00)"
                       style={{ flex: 1, minWidth: '150px' }}
                       required
                     />
@@ -1996,9 +2008,11 @@ function App() {
                            {editingPlanId === plan.id ? (
                              <form onSubmit={(e) => handleSaveEditedRepetitionPlan(e, plan.surahId)} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                 <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-main)' }}>Takrorlash kunlari (masalan: 1, 3, 7)</label>
+                                 <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-main)' }}>Takrorlash kunlari soni (masalan: 30)</label>
                                  <input
-                                   type="text"
+                                   type="number"
+                                   min="1"
+                                   max="100"
                                    className="auth-input"
                                    value={editPlanDays}
                                    onChange={e => setEditPlanDays(e.target.value)}
@@ -2006,7 +2020,7 @@ function App() {
                                  />
                                </div>
                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                 <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-main)' }}>Takrorlash vaqtlari (masalan: 09:00, 20:30)</label>
+                                 <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-main)' }}>Takrorlash vaqtlari (masalan: 09:00)</label>
                                  <input
                                    type="text"
                                    className="auth-input"
