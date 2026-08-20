@@ -1971,7 +1971,7 @@ input:checked + .slider::before {
 /* Side-by-side dashboard layout for stats column and heatmap calendar */
 .dashboard-top-grid {
   display: grid;
-  grid-template-columns: minmax(200px, 250px) 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 20px;
   margin-bottom: 24px;
   align-items: stretch;

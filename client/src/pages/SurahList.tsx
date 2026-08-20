@@ -411,34 +411,37 @@ export const SurahList: React.FC = () => {
   return (
     <div className="content-scroll-container" style={{ padding: '20px' }}>
       
-      {/* Top dashboard section: progress stats in a horizontal 1fr grid */}
-      <div className="dashboard-stats" style={{ paddingLeft: 0, paddingRight: 0, paddingTop: 0, paddingBottom: '20px' }}>
-        <CircularProgress
-          percentage={surahsPercent}
-          value={stats?.memorizedSurahs || 0}
-          total={stats?.totalSurahs || 114}
-          label="Sura"
-          color="#D84C7B"
-        />
-        <CircularProgress
-          percentage={versesPercent}
-          value={stats?.memorizedVerses || 0}
-          total={stats?.totalVerses || 6236}
-          label="Oyat"
-          color="#E57399"
-        />
-        <CircularProgress
-          percentage={juzPercent}
-          value={stats?.memorizedJuzs || 0}
-          total={30}
-          label="Juz"
-          color="#FCD3E1"
-        />
-      </div>
-
-      {/* Activity Heatmap */}
-      <div style={{ marginBottom: '20px' }}>
-        <FaollikHeatmap activities={activities} />
+      {/* Top dashboard section: progress stats (vertical column) & activity heatmap side-by-side */}
+      <div className="dashboard-top-grid">
+        {/* Left Column: Progress Bars column (Vertical stack) */}
+        <div className="dashboard-stats-vertical" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <CircularProgress
+            percentage={surahsPercent}
+            value={stats?.memorizedSurahs || 0}
+            total={stats?.totalSurahs || 114}
+            label="Sura"
+            color="#D84C7B"
+          />
+          <CircularProgress
+            percentage={versesPercent}
+            value={stats?.memorizedVerses || 0}
+            total={stats?.totalVerses || 6236}
+            label="Oyat"
+            color="#E57399"
+          />
+          <CircularProgress
+            percentage={juzPercent}
+            value={stats?.memorizedJuzs || 0}
+            total={30}
+            label="Juz"
+            color="#FCD3E1"
+          />
+        </div>
+        
+        {/* Right Column: Heatmap (calendar) */}
+        <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          <FaollikHeatmap activities={activities} />
+        </div>
       </div>
 
       {/* Admin create surah card */}
