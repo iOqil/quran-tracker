@@ -22,7 +22,8 @@ import {
   CheckSquare,
   Plus,
   AlertCircle,
-  Trash2
+  Trash2,
+  Edit2
 } from 'lucide-react';
 
 // Helper: get local date as YYYY-MM-DD (avoids UTC mismatch in UTC+5 timezone)
@@ -352,6 +353,11 @@ function App() {
   const [repPlanFormSurah, setRepPlanFormSurah] = useState<string>('');
   const [repPlanFormDays, setRepPlanFormDays] = useState<string>('1, 2, 3, 4, 7, 14, 30');
   const [repPlanFormTimes, setRepPlanFormTimes] = useState<string>('08:00, 20:30');
+
+  // Repetition Plan inline edit states
+  const [editingPlanId, setEditingPlanId] = useState<number | null>(null);
+  const [editPlanDays, setEditPlanDays] = useState<string>('');
+  const [editPlanTimes, setEditPlanTimes] = useState<string>('');
 
   // Todo & Heatmap states
   const [todos, setTodos] = useState<Todo[]>([]);
@@ -991,6 +997,60 @@ function App() {
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleEditRepetitionPlan = (plan: RepetitionPlan) => {
+    setEditingPlanId(plan.id);
+    try {
+      const parsedDays = JSON.parse(plan.days);
+      setEditPlanDays(Array.isArray(parsedDays) ? parsedDays.join(', ') : plan.days);
+    } catch {
+      setEditPlanDays(plan.days);
+    }
+    try {
+      const parsedTimes = JSON.parse(plan.times);
+      setEditPlanTimes(Array.isArray(parsedTimes) ? parsedTimes.join(', ') : plan.times);
+    } catch {
+      setEditPlanTimes(plan.times);
+    }
+  };
+
+  const handleSaveEditedRepetitionPlan = async (e: React.FormEvent, surahId: number) => {
+    e.preventDefault();
+    if (!currentUser) return;
+
+    const parsedDays = editPlanDays.split(',').map(d => parseInt(d.trim())).filter(d => !isNaN(d));
+    const parsedTimes = editPlanTimes.split(',').map(t => t.trim()).filter(t => t.length > 0);
+
+    if (parsedDays.length === 0 || parsedTimes.length === 0) {
+      alert("Kunlar yoki vaqtlar noto'g'ri kiritildi.");
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/repetition/plans', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${currentUser.token}`
+        },
+        body: JSON.stringify({
+          surahId,
+          days: parsedDays,
+          times: parsedTimes
+        })
+      });
+      if (res.ok) {
+        setEditingPlanId(null);
+        fetchData();
+      } else {
+        const err = await res.json();
+        alert(err.error || "Xatolik yuz berdi");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Xatolik yuz berdi");
     }
   };
 
@@ -1841,7 +1901,11 @@ function App() {
                       required
                     />
                   </div>
-                  <button type="submit" className="add-todo-btn" style={{ alignSelf: 'flex-start' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', display: 'block', lineHeight: '1.4' }}>
+                    ℹ️ <strong>Takrorlash kunlari (1, 2, 3, 4, 7...)</strong>: Surani yodlagan kuningizdan keyingi nisbiy kunlar. 
+                    1 = Yodlangan kunning o'zi (bugun), 2 = ertasi kuni, 7 = 7-kuni va h.k.
+                  </span>
+                  <button type="submit" className="add-todo-btn" style={{ alignSelf: 'flex-start', marginTop: '6px' }}>
                     <Plus size={16} /> Reja yaratish
                   </button>
                 </form>
@@ -1914,45 +1978,81 @@ function App() {
 
                       return (
                         <div key={plan.id} className="repetition-card" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '10px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <div>
-                              <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--primary-dark)', display: 'block' }}>{plan.surah.name}</span>
-                              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{plan.surah.verseCount}-oyat · {plan.surah.juz}-juz</span>
-                            </div>
-                            <button onClick={() => handleDeleteRepetitionPlan(plan.id)} style={{ color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
+                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                             <div>
+                               <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--primary-dark)', display: 'block' }}>{plan.surah.name}</span>
+                               <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{plan.surah.verseCount}-oyat · {plan.surah.juz}-juz</span>
+                             </div>
+                             <div style={{ display: 'flex', gap: '4px' }}>
+                               <button onClick={() => handleEditRepetitionPlan(plan)} style={{ color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }} title="Tahrirlash">
+                                 <Edit2 size={16} />
+                               </button>
+                               <button onClick={() => handleDeleteRepetitionPlan(plan.id)} style={{ color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }} title="O'chirish">
+                                 <Trash2 size={16} />
+                               </button>
+                             </div>
+                           </div>
 
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
-                            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Progress: <strong style={{color: 'var(--primary-dark)'}}>{completedCount} / {plan.sessions.length}</strong> ({progressPercent}%)</span>
-                            <span style={{ fontSize: '11px', color: 'var(--primary-dark)', fontWeight: 600, backgroundColor: 'var(--primary-light)', padding: '2px 8px', borderRadius: '12px' }}>
-                              Keyingi: {nextLabel}
-                            </span>
-                          </div>
+                           {editingPlanId === plan.id ? (
+                             <form onSubmit={(e) => handleSaveEditedRepetitionPlan(e, plan.surahId)} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
+                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                 <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-main)' }}>Takrorlash kunlari (masalan: 1, 3, 7)</label>
+                                 <input
+                                   type="text"
+                                   className="auth-input"
+                                   value={editPlanDays}
+                                   onChange={e => setEditPlanDays(e.target.value)}
+                                   required
+                                 />
+                               </div>
+                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                 <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-main)' }}>Takrorlash vaqtlari (masalan: 09:00, 20:30)</label>
+                                 <input
+                                   type="text"
+                                   className="auth-input"
+                                   value={editPlanTimes}
+                                   onChange={e => setEditPlanTimes(e.target.value)}
+                                   required
+                                 />
+                               </div>
+                               <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                                 <button type="submit" className="status-pill btn-success" style={{ border: '1px solid #c3e6cb' }}>Saqlash</button>
+                                 <button type="button" onClick={() => setEditingPlanId(null)} className="status-pill btn-danger" style={{ border: '1px solid #f5c6cb' }}>Bekor qilish</button>
+                                </div>
+                             </form>
+                           ) : (
+                             <>
+                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                                 <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Progress: <strong style={{color: 'var(--primary-dark)'}}>{completedCount} / {plan.sessions.length}</strong> ({progressPercent}%)</span>
+                                 <span style={{ fontSize: '11px', color: 'var(--primary-dark)', fontWeight: 600, backgroundColor: 'var(--primary-light)', padding: '2px 8px', borderRadius: '12px' }}>
+                                   Keyingi: {nextLabel}
+                                 </span>
+                               </div>
 
-                          {/* GitHub-style Contribution Graph */}
-                          <div className="repetition-grid-wrapper">
-                            {uniqueDates.map(dateStr => {
-                              const daySessions = groupedByDate[dateStr];
-                              let levelClass = 'level-0';
+                               {/* GitHub-style Contribution Graph */}
+                               <div className="repetition-grid-wrapper">
+                                 {uniqueDates.map(dateStr => {
+                                   const daySessions = groupedByDate[dateStr];
+                                   let levelClass = 'level-0';
 
-                              if (daySessions.every(s => s.status === 'Bajarildi')) levelClass = 'level-4';
-                              else if (daySessions.some(s => s.status === "O'tkazib yuborildi")) levelClass = 'level-red';
-                              else if (daySessions.some(s => s.status === 'Bajarildi' || s.status === 'Qoniqarli')) levelClass = 'level-2';
-                              else if (dateStr < todayStr && daySessions.some(s => s.status === 'Kutilmoqda')) levelClass = 'level-red';
+                                   if (daySessions.every(s => s.status === 'Bajarildi')) levelClass = 'level-4';
+                                   else if (daySessions.some(s => s.status === "O'tkazib yuborildi")) levelClass = 'level-red';
+                                   else if (daySessions.some(s => s.status === 'Bajarildi' || s.status === 'Qoniqarli')) levelClass = 'level-2';
+                                   else if (dateStr < todayStr && daySessions.some(s => s.status === 'Kutilmoqda')) levelClass = 'level-red';
 
-                              const isToday = dateStr === todayStr;
+                                   const isToday = dateStr === todayStr;
 
-                              return (
-                                <div 
-                                  key={dateStr} 
-                                  className={`repetition-cell ${levelClass} ${isToday ? 'is-today' : ''}`}
-                                  title={`${dateStr}\n${daySessions.map(s => `${s.time}: ${s.status}`).join('\n')}`}
-                                ></div>
-                              );
-                            })}
-                          </div>
+                                   return (
+                                     <div 
+                                       key={dateStr} 
+                                       className={`repetition-cell ${levelClass} ${isToday ? 'is-today' : ''}`}
+                                       title={`${dateStr}\n${daySessions.map(s => `${s.time}: ${s.status}`).join('\n')}`}
+                                     ></div>
+                                   );
+                                 })}
+                               </div>
+                             </>
+                           )}
                         </div>
                       );
                     })}
