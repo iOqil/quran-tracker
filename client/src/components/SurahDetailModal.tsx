@@ -40,21 +40,13 @@ export const SurahDetailModal: React.FC<SurahDetailModalProps> = ({
   const verseRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
 
   useEffect(() => {
-    // Fetch Arabic text and Uzbek Translation concurrently
-    Promise.all([
-      fetch(`https://api.quran.com/api/v4/quran/verses/uthmani?chapter_number=${selectedSurah.number}`).then(res => res.json()),
-      fetch(`https://api.quran.com/api/v4/quran/translations/55?chapter_number=${selectedSurah.number}`).then(res => res.json())
-    ])
-      .then(([arabicRes, transRes]) => {
-        if (arabicRes?.verses && transRes?.translations) {
-          const combined = arabicRes.verses.map((v: any, idx: number) => ({
-            arabic: v.text_uthmani,
-            translation: transRes.translations[idx]?.text?.replace(/<[^>]+>/g, '') || ''
-          }));
-          setVerseData(combined);
-        }
-      })
-      .catch(err => console.error("Error fetching verse data:", err));
+    // Dynamically load the Quran data to avoid blocking initial render
+    import('../data/quran_uz.json').then((module) => {
+      const allData = module.default as Record<number, {arabic: string, translation: string}[]>;
+      if (allData && allData[selectedSurah.number]) {
+        setVerseData(allData[selectedSurah.number]);
+      }
+    }).catch(err => console.error("Failed to load local quran data:", err));
   }, [selectedSurah.number]);
 
   const handleReciterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
