@@ -13,7 +13,7 @@ window.fetch = async function(...args) {
     // Agar ilova Capacitor (Android/iOS) ichida ishlayotgan bo'lsa va VITE_API_URL yo'q bo'lsa,
     // to'g'ridan-to'g'ri backend IP manzilingizga ulanadi. Veb-saytda esa oddiy ishlayveradi.
     const isNative = Capacitor.isNativePlatform();
-    const fallbackUrl = isNative ? 'http://37.60.238.251:5000' : '';
+    const fallbackUrl = isNative ? 'https://qurantracker.ioqil.uz' : '';
     const baseUrl = import.meta.env.VITE_API_URL || fallbackUrl;
     resource = baseUrl + resource;
   }
