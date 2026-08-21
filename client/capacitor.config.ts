@@ -3,7 +3,10 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'uz.qalbimdaqiquron.tracker',
   appName: 'QuranTracker',
-  webDir: 'dist'
+  webDir: 'dist',
+  server: {
+    cleartext: true
+  }
 };
 
 export default config;
