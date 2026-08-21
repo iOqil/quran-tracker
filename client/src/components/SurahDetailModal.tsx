@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, Check, Play, Pause, Volume2 } from 'lucide-react';
+import { ChevronLeft, Check, Play, Pause, Volume2, Repeat } from 'lucide-react';
 import type { SurahDetail } from '../types';
 
 interface SurahDetailModalProps {
@@ -28,17 +28,35 @@ export const SurahDetailModal: React.FC<SurahDetailModalProps> = ({
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [playingVerse, setPlayingVerse] = useState<number | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
   
-  // Create refs for verse elements to auto-scroll
+  // Repeat feature states
+  const [repeatCount, setRepeatCount] = useState<number>(1);
+  const [currentRepeat, setCurrentRepeat] = useState<number>(1);
+  
+  // Arabic Text state
+  const [arabicText, setArabicText] = useState<string[]>([]);
+  
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const verseRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
+
+  useEffect(() => {
+    // Fetch Arabic text
+    fetch(`https://api.quran.com/api/v4/quran/verses/uthmani?chapter_number=${selectedSurah.number}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.verses) {
+          const texts = data.verses.map((v: any) => v.text_uthmani);
+          setArabicText(texts);
+        }
+      })
+      .catch(err => console.error("Error fetching Arabic text:", err));
+  }, [selectedSurah.number]);
 
   const handleReciterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
     setReciterId(val);
     localStorage.setItem('quranReciterId', val);
     
-    // Stop playing if reciter changes to avoid glitching
     if (isPlaying) {
       audioRef.current?.pause();
       setIsPlaying(false);
@@ -52,6 +70,7 @@ export const SurahDetailModal: React.FC<SurahDetailModalProps> = ({
     return `${selectedServer}/${formatNumber(selectedSurah.number)}${formatNumber(verseNo)}.mp3`;
   };
 
+  // Play audio when playingVerse changes
   useEffect(() => {
     if (playingVerse !== null && audioRef.current) {
       audioRef.current.src = getAudioUrl(playingVerse);
@@ -61,13 +80,12 @@ export const SurahDetailModal: React.FC<SurahDetailModalProps> = ({
       });
       setIsPlaying(true);
       
-      // Auto scroll to active verse
       const verseEl = verseRefs.current[playingVerse];
       if (verseEl) {
         verseEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }
-  }, [playingVerse]);
+  }, [playingVerse, reciterId]);
 
   const togglePlay = () => {
     if (isPlaying) {
@@ -76,6 +94,7 @@ export const SurahDetailModal: React.FC<SurahDetailModalProps> = ({
     } else {
       if (playingVerse === null) {
         setPlayingVerse(1);
+        setCurrentRepeat(1);
       } else {
         audioRef.current?.play().catch(console.error);
         setIsPlaying(true);
@@ -84,16 +103,30 @@ export const SurahDetailModal: React.FC<SurahDetailModalProps> = ({
   };
 
   const handleAudioEnded = () => {
-    if (playingVerse !== null && playingVerse < selectedSurah.verseCount) {
-      setPlayingVerse(playingVerse + 1);
-    } else {
-      setIsPlaying(false);
-      setPlayingVerse(null);
+    if (playingVerse !== null) {
+      if (currentRepeat < repeatCount) {
+        // Repeat the exact same verse
+        setCurrentRepeat(prev => prev + 1);
+        if (audioRef.current) {
+          audioRef.current.currentTime = 0;
+          audioRef.current.play().catch(console.error);
+        }
+      } else {
+        // Move to the next verse
+        setCurrentRepeat(1); // Reset for next verse
+        if (playingVerse < selectedSurah.verseCount) {
+          setPlayingVerse(playingVerse + 1);
+        } else {
+          setIsPlaying(false);
+          setPlayingVerse(null);
+        }
+      }
     }
   };
 
   const playSpecificVerse = (verseNo: number) => {
     setPlayingVerse(verseNo);
+    setCurrentRepeat(1); // reset repeat when manually clicked
   };
 
   return (
@@ -111,34 +144,47 @@ export const SurahDetailModal: React.FC<SurahDetailModalProps> = ({
           </button>
         </div>
 
-        {/* Custom Audio Player Section */}
         <div style={{ padding: '12px 16px', backgroundColor: 'var(--bg-card)', borderBottom: '1px solid var(--border-color)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Volume2 size={14} color="var(--primary-color)" /> Oyatma-oyat Tilovat
             </span>
-            <select 
-              value={reciterId} 
-              onChange={handleReciterChange}
-              className="reciter-select"
-            >
-              {RECITERS.map(r => (
-                <option key={r.id} value={r.id}>{r.name}</option>
-              ))}
-            </select>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <select 
+                value={reciterId} 
+                onChange={handleReciterChange}
+                className="reciter-select"
+              >
+                {RECITERS.map(r => (
+                  <option key={r.id} value={r.id}>{r.name}</option>
+                ))}
+              </select>
+            </div>
           </div>
           
           <div className="custom-audio-player">
-            <button className="play-pause-btn" onClick={togglePlay}>
-              {isPlaying ? <Pause size={18} fill="white" /> : <Play size={18} fill="white" style={{ marginLeft: '2px' }} />}
+            <button className="play-pause-btn" onClick={togglePlay} style={{ backgroundColor: 'var(--primary-color)' }}>
+              {isPlaying ? <Pause size={20} color="white" fill="white" /> : <Play size={20} color="white" fill="white" style={{ marginLeft: '3px' }} />}
             </button>
             <div className="audio-progress-info">
               <span className="audio-status-text">
                 {playingVerse ? `${selectedSurah.name} ${playingVerse}-oyat` : 'Tinglashga tayyor'}
               </span>
               <span className="audio-subtitle">
-                {isPlaying ? "O'qilmoqda..." : (playingVerse ? "To'xtatilgan" : "Boshlash uchun bosing")}
+                {isPlaying ? (repeatCount > 1 ? `O'qilmoqda... (${currentRepeat}/${repeatCount})` : "O'qilmoqda...") : (playingVerse ? "To'xtatilgan" : "Boshlash uchun bosing")}
               </span>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Repeat size={14} color="var(--text-muted)" />
+              <select 
+                value={repeatCount} 
+                onChange={(e) => setRepeatCount(Number(e.target.value))}
+                className="reciter-select"
+                style={{ padding: '4px 6px' }}
+              >
+                {[1, 2, 3, 5, 10].map(n => <option key={n} value={n}>{n}x</option>)}
+              </select>
             </div>
           </div>
           
@@ -149,9 +195,6 @@ export const SurahDetailModal: React.FC<SurahDetailModalProps> = ({
             onPlay={() => setIsPlaying(true)}
             style={{ display: 'none' }} 
           />
-          <p style={{ fontSize: '9px', color: 'var(--text-muted)', marginTop: '4px', textAlign: 'right' }}>
-            Manba: everyayah.com (Sinxron o'qish imkoniyati)
-          </p>
         </div>
 
         <div className="modal-actions">
@@ -176,7 +219,7 @@ export const SurahDetailModal: React.FC<SurahDetailModalProps> = ({
         </div>
 
         <div className="verses-scroll-area">
-          <div className="verses-grid">
+          <div className="verses-grid" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {Array.from({ length: selectedSurah.verseCount }, (_, i) => {
               const verseNo = i + 1;
               const isChecked = selectedSurah.memorizedVerses.includes(verseNo);
@@ -187,50 +230,71 @@ export const SurahDetailModal: React.FC<SurahDetailModalProps> = ({
                   key={verseNo}
                   ref={(el) => { verseRefs.current[verseNo] = el; }}
                   className={`verse-checkbox-card ${isChecked ? 'checked' : ''} ${isPlayingNow ? 'playing' : ''}`}
+                  style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}
                 >
-                  <div 
-                    className="verse-label" 
-                    onClick={() => handleToggleVerse(verseNo, !isChecked)}
-                    style={{ flex: 1, cursor: 'pointer' }}
-                  >
-                    <span className="verse-title">{selectedSurah.name} {verseNo}</span>
-                    <span className="verse-juz-tag">{selectedSurah.juz}-juz</span>
-                  </div>
-                  
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (isPlayingNow && isPlaying) {
-                          togglePlay();
-                        } else {
-                          playSpecificVerse(verseNo);
-                        }
-                      }}
-                      style={{ 
-                        background: 'none', 
-                        border: 'none', 
-                        color: isPlayingNow ? 'var(--primary-color)' : 'var(--text-muted)',
-                        cursor: 'pointer',
-                        padding: '4px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}
-                    >
-                      {isPlayingNow && isPlaying ? <Pause size={16} /> : <Play size={16} />}
-                    </button>
-                    
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
                     <div 
-                      className="verse-checkbox-circle" 
+                      className="verse-label" 
                       onClick={() => handleToggleVerse(verseNo, !isChecked)}
-                      style={{ cursor: 'pointer' }}
+                      style={{ flex: 1, cursor: 'pointer' }}
                     >
-                      {isChecked && (
-                        <Check className="verse-check-mark" strokeWidth={3} />
-                      )}
+                      <span className="verse-title">{selectedSurah.name} {verseNo}</span>
+                      <span className="verse-juz-tag">{selectedSurah.juz}-juz</span>
+                    </div>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (isPlayingNow && !isPlaying) {
+                            togglePlay(); // Resume
+                          } else if (isPlayingNow && isPlaying) {
+                            togglePlay(); // Pause
+                          } else {
+                            playSpecificVerse(verseNo); // Play new verse
+                          }
+                        }}
+                        style={{ 
+                          background: 'none', 
+                          border: 'none', 
+                          color: isPlayingNow ? 'var(--primary-color)' : 'var(--text-muted)',
+                          cursor: 'pointer',
+                          padding: '4px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                      >
+                        {isPlayingNow && isPlaying ? <Pause size={18} /> : <Play size={18} />}
+                      </button>
+                      
+                      <div 
+                        className="verse-checkbox-circle" 
+                        onClick={() => handleToggleVerse(verseNo, !isChecked)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        {isChecked && (
+                          <Check className="verse-check-mark" strokeWidth={3} />
+                        )}
+                      </div>
                     </div>
                   </div>
+                  
+                  {/* Arabic Text Section */}
+                  {arabicText[i] && (
+                    <div style={{ 
+                      fontSize: '24px', 
+                      textAlign: 'right', 
+                      fontFamily: '"Amiri", "Times New Roman", serif',
+                      color: 'var(--text-color)',
+                      lineHeight: '1.9',
+                      paddingTop: '12px',
+                      paddingBottom: '4px',
+                      direction: 'rtl'
+                    }}>
+                      {arabicText[i]}
+                    </div>
+                  )}
                 </div>
               );
             })}
