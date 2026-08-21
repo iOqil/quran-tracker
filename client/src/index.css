@@ -2114,3 +2114,6 @@ input:checked + .slider::before {
   transform: scale(1.02);
   z-index: 10;
 }
+
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.animate-spin { animation: spin 1s linear infinite; }

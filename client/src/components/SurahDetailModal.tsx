@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, Check, Play, Pause, Volume2, Repeat } from 'lucide-react';
+import { ChevronLeft, Check, Play, Pause, Volume2, Repeat, Download, Loader2 } from 'lucide-react';
 import type { SurahDetail } from '../types';
+import { audioCache } from '../utils/audioCache';
 
 interface SurahDetailModalProps {
   selectedSurah: SurahDetail;
@@ -63,25 +64,54 @@ export const SurahDetailModal: React.FC<SurahDetailModalProps> = ({
   const selectedServer = RECITERS.find(r => r.id === reciterId)?.server || RECITERS[0].server;
   const formatNumber = (num: number) => num.toString().padStart(3, '0');
   
-  const getAudioUrl = (verseNo: number) => {
+  const getRawAudioUrl = (verseNo: number) => {
     return `${selectedServer}/${formatNumber(selectedSurah.number)}${formatNumber(verseNo)}.mp3`;
+  };
+
+  // Offline Audio State
+  const [downloadProgress, setDownloadProgress] = useState<{loaded: number, total: number} | null>(null);
+  const [isCached, setIsCached] = useState(false);
+
+  useEffect(() => {
+    audioCache.isSurahCached(selectedServer, selectedSurah.number, selectedSurah.verseCount)
+      .then(setIsCached);
+  }, [selectedServer, selectedSurah.number, selectedSurah.verseCount]);
+
+  const handleDownload = async () => {
+    if (isCached) {
+      await audioCache.deleteSurah(selectedServer, selectedSurah.number, selectedSurah.verseCount);
+      setIsCached(false);
+    } else {
+      setDownloadProgress({ loaded: 0, total: selectedSurah.verseCount });
+      await audioCache.downloadSurah(selectedServer, selectedSurah.number, selectedSurah.verseCount, (loaded, total) => {
+        setDownloadProgress({ loaded, total });
+      });
+      setDownloadProgress(null);
+      setIsCached(true);
+    }
   };
 
   // Play audio when playingVerse changes
   useEffect(() => {
+    let active = true;
     if (playingVerse !== null && audioRef.current) {
-      audioRef.current.src = getAudioUrl(playingVerse);
-      audioRef.current.play().catch(e => {
-        console.error("Audio play failed:", e);
-        setIsPlaying(false);
+      const rawUrl = getRawAudioUrl(playingVerse);
+      audioCache.getAudioUrl(rawUrl).then(url => {
+        if (!active || !audioRef.current) return;
+        audioRef.current.src = url;
+        audioRef.current.play().catch(e => {
+          console.error("Audio play failed:", e);
+          setIsPlaying(false);
+        });
+        setIsPlaying(true);
+        
+        const verseEl = verseRefs.current[playingVerse];
+        if (verseEl) {
+          verseEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
       });
-      setIsPlaying(true);
-      
-      const verseEl = verseRefs.current[playingVerse];
-      if (verseEl) {
-        verseEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
     }
+    return () => { active = false; };
   }, [playingVerse, reciterId]);
 
   const togglePlay = () => {
@@ -146,7 +176,37 @@ export const SurahDetailModal: React.FC<SurahDetailModalProps> = ({
             <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Volume2 size={14} color="var(--primary)" /> Oyatma-oyat Tilovat
             </span>
-            <div style={{ display: 'flex', gap: '6px' }}>
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+              <button 
+                onClick={handleDownload}
+                disabled={downloadProgress !== null}
+                style={{
+                  background: isCached ? 'var(--primary-light)' : 'transparent',
+                  border: `1px solid ${isCached ? 'var(--primary)' : 'var(--border-color)'}`,
+                  color: isCached ? 'var(--primary-dark)' : 'var(--text-muted)',
+                  padding: '4px 8px',
+                  borderRadius: '6px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontSize: '11px',
+                  cursor: downloadProgress !== null ? 'wait' : 'pointer'
+                }}
+              >
+                {downloadProgress !== null ? (
+                  <>
+                    <Loader2 size={12} className="animate-spin" /> {downloadProgress.loaded}/{downloadProgress.total}
+                  </>
+                ) : isCached ? (
+                  <>
+                    <Check size={12} /> Saqlangan
+                  </>
+                ) : (
+                  <>
+                    <Download size={12} /> Yuklash
+                  </>
+                )}
+              </button>
               <select 
                 value={reciterId} 
                 onChange={handleReciterChange}
