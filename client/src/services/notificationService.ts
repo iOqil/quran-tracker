@@ -47,12 +47,10 @@ export const playNotificationSound = () => {
   }
 };
 
-export const subscribeToPush = async (token: string) => {
+export const subscribeToPush = async (token: string, showUI: boolean = false) => {
   if ('serviceWorker' in navigator && 'PushManager' in window) {
     try {
       const registration = await navigator.serviceWorker.ready;
-      
-      // Get public key from server
       const keyRes = await fetch('/api/vapid-public-key');
       const { publicKey } = await keyRes.json();
       
@@ -65,17 +63,16 @@ export const subscribeToPush = async (token: string) => {
 
       await fetch('/api/push/subscribe', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(subscription)
       });
-
-      console.log('Push subscription successful');
+      if (showUI) alert("Bildirishnomalar muvaffaqiyatli ulandi!");
     } catch (e) {
       console.error('Push subscription failed:', e);
+      if (showUI) alert("Ulanishda xatolik: " + e);
     }
+  } else {
+    if (showUI) alert("Sizning brauzeringiz Push xabarlarni qo'llab-quvvatlamaydi (yoki HTTPS kerak).");
   }
 };
 
@@ -86,14 +83,14 @@ export const requestNotificationPermission = async (token?: string) => {
   }
   
   if (Notification.permission === "granted") {
-    if (token) subscribeToPush(token);
+    if (token) subscribeToPush(token, true);
     return true;
   }
   
   if (Notification.permission !== "denied") {
     const permission = await Notification.requestPermission();
     if (permission === "granted") {
-      if (token) subscribeToPush(token);
+      if (token) subscribeToPush(token, true);
       return true;
     }
   }
