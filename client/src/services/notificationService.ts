@@ -33,7 +33,11 @@ export const playNotificationSound = () => {
 
 export const subscribeToPush = async (token: string, showUI: boolean = false) => {
   if (Capacitor.isNativePlatform()) {
-    if (showUI) alert("Bildirishnomalar muvaffaqiyatli faollashtirildi!");
+    if (showUI) {
+      alert("Bildirishnomalar muvaffaqiyatli faollashtirildi!");
+      // Send a test notification immediately
+      showNotification("Sinov", "Bildirishnomalar to'g'ri ishlamoqda! 🚀");
+    }
     return; // Native uses LocalNotifications directly
   }
 
@@ -100,21 +104,26 @@ export const requestNotificationPermission = async (token?: string) => {
   return false;
 };
 
-export const showNotification = async (title: string, body: string) => {
-  if (Capacitor.isNativePlatform()) {
-    const perm = await LocalNotifications.checkPermissions();
-    if (perm.display === 'granted') {
-      await LocalNotifications.schedule({
-        notifications: [{
-          title, body, id: new Date().getTime(),
-          schedule: { at: new Date(Date.now() + 100) },
-          sound: undefined, attachments: undefined, actionTypeId: '', extra: undefined
-        }]
-      });
-      playNotificationSound();
+  export const showNotification = async (title: string, body: string) => {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const perm = await LocalNotifications.checkPermissions();
+        if (perm.display === 'granted') {
+          await LocalNotifications.schedule({
+            notifications: [{
+              title, 
+              body, 
+              id: Math.floor(Math.random() * 2000000000), // Must be 32-bit int
+              schedule: { at: new Date(Date.now() + 1000) }
+            }]
+          });
+          playNotificationSound();
+        }
+      } catch (err) {
+        console.error("Local notification schedule error:", err);
+      }
+      return;
     }
-    return;
-  }
 
   if (typeof Notification !== 'undefined' && Notification.permission === "granted") {
     new Notification(title, { body, icon: '/vite.svg', badge: '/vite.svg' });
