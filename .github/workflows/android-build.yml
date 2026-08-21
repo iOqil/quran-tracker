@@ -38,15 +38,17 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
+      - name: Make gradlew executable
+        working-directory: ./client/android
+        run: chmod +x gradlew
+
       - name: Sync Capacitor
         working-directory: ./client
         run: npx cap sync android
 
       - name: Build APK
         working-directory: ./client/android
-        run: |
-          chmod +x gradlew
-          ./gradlew assembleDebug
+        run: ./gradlew assembleDebug
 
       - name: Upload APK as Artifact
         uses: actions/upload-artifact@v4
