@@ -13,7 +13,7 @@ import {
   Sun,
   Moon
 } from 'lucide-react';
-import { requestNotificationPermission, useNotifications } from '../services/notificationService';
+import { requestNotificationPermission, useNotifications, checkNotificationPermission } from '../services/notificationService';
 import { useAuth } from '../context/AuthContext';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
@@ -33,10 +33,14 @@ export const Layout: React.FC<LayoutProps> = ({
   const { currentUser, logout, theme, toggleTheme } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const [notificationStatus, setNotificationStatus] = React.useState(
-    typeof Notification !== 'undefined' ? Notification.permission : 'default'
-  );
+  const [notificationStatus, setNotificationStatus] = React.useState('default');
   const isOnline = useOnlineStatus();
+
+  React.useEffect(() => {
+    checkNotificationPermission().then(granted => {
+      if (granted) setNotificationStatus('granted');
+    });
+  }, []);
 
   useNotifications(currentUser);
 

@@ -102,6 +102,9 @@ export const SurahDetailModal: React.FC<SurahDetailModalProps> = ({
         audioRef.current.play().catch(e => {
           console.error("Audio play failed:", e);
           setIsPlaying(false);
+          if (!navigator.onLine) {
+            alert("Siz oflayn rejimdasiz. Tinglash uchun avval ushbu surani 'Yuklash' orqali saqlab oling!");
+          }
         });
         setIsPlaying(true);
         
@@ -114,6 +117,16 @@ export const SurahDetailModal: React.FC<SurahDetailModalProps> = ({
     return () => { active = false; };
   }, [playingVerse, reciterId]);
 
+  const playAudioSafe = () => {
+    audioRef.current?.play().catch(e => {
+      console.error("Audio play failed:", e);
+      setIsPlaying(false);
+      if (!navigator.onLine) {
+        alert("Siz oflayn rejimdasiz. Tinglash uchun avval ushbu surani 'Yuklash' orqali saqlab oling!");
+      }
+    });
+  };
+
   const togglePlay = () => {
     if (isPlaying) {
       audioRef.current?.pause();
@@ -123,7 +136,7 @@ export const SurahDetailModal: React.FC<SurahDetailModalProps> = ({
         setPlayingVerse(1);
         setCurrentRepeat(1);
       } else {
-        audioRef.current?.play().catch(console.error);
+        playAudioSafe();
         setIsPlaying(true);
       }
     }
@@ -136,7 +149,7 @@ export const SurahDetailModal: React.FC<SurahDetailModalProps> = ({
         setCurrentRepeat(prev => prev + 1);
         if (audioRef.current) {
           audioRef.current.currentTime = 0;
-          audioRef.current.play().catch(console.error);
+          playAudioSafe();
         }
       } else {
         // Move to the next verse

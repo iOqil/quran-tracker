@@ -1,66 +1,51 @@
 import { useEffect, useRef } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { LocalNotifications } from '@capacitor/local-notifications';
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding)
-    .replace(/-/g, '+')
-    .replace(/_/g, '/');
-
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
   const rawData = window.atob(base64);
   const outputArray = new Uint8Array(rawData.length);
-
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
+  for (let i = 0; i < rawData.length; ++i) { outputArray[i] = rawData.charCodeAt(i); }
   return outputArray;
 }
 
-// A simple beep sound using Web Audio API
 export const playNotificationSound = () => {
   try {
     const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioContext) return;
     const ctx = new AudioContext();
-    
     const playTone = (freq: number, startTime: number, duration: number) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, startTime);
-      
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'sine'; osc.frequency.setValueAtTime(freq, startTime);
       gain.gain.setValueAtTime(0, startTime);
       gain.gain.linearRampToValueAtTime(0.3, startTime + 0.05);
       gain.gain.linearRampToValueAtTime(0, startTime + duration);
-      
-      osc.start(startTime);
-      osc.stop(startTime + duration);
+      osc.start(startTime); osc.stop(startTime + duration);
     };
-
     const now = ctx.currentTime;
-    playTone(659.25, now, 0.3); // E5
-    playTone(880.00, now + 0.15, 0.5); // A5
-  } catch (err) {
-    console.error('Audio play failed', err);
-  }
+    playTone(659.25, now, 0.3); playTone(880.00, now + 0.15, 0.5);
+  } catch (err) { console.error('Audio play failed', err); }
 };
 
 export const subscribeToPush = async (token: string, showUI: boolean = false) => {
+  if (Capacitor.isNativePlatform()) {
+    if (showUI) alert("Bildirishnomalar muvaffaqiyatli faollashtirildi!");
+    return; // Native uses LocalNotifications directly
+  }
+
   if ('serviceWorker' in navigator && 'PushManager' in window) {
     try {
       const registration = await navigator.serviceWorker.ready;
       const keyRes = await fetch('/api/vapid-public-key');
       const { publicKey } = await keyRes.json();
-      
       if (!publicKey) return;
-
       const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey)
+        userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(publicKey)
       });
-
       await fetch('/api/push/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
@@ -72,12 +57,29 @@ export const subscribeToPush = async (token: string, showUI: boolean = false) =>
       if (showUI) alert("Ulanishda xatolik: " + e);
     }
   } else {
-    if (showUI) alert("Sizning brauzeringiz Push xabarlarni qo'llab-quvvatlamaydi (yoki HTTPS kerak).");
+    if (showUI) alert("Sizning brauzeringiz Push xabarlarni qo'llab-quvvatlamaydi.");
   }
 };
 
+export const checkNotificationPermission = async (): Promise<boolean> => {
+  if (Capacitor.isNativePlatform()) {
+    const perm = await LocalNotifications.checkPermissions();
+    return perm.display === 'granted';
+  }
+  return typeof Notification !== 'undefined' && Notification.permission === 'granted';
+};
+
 export const requestNotificationPermission = async (token?: string) => {
-  if (!("Notification" in window)) {
+  if (Capacitor.isNativePlatform()) {
+    const perm = await LocalNotifications.requestPermissions();
+    if (perm.display === 'granted') {
+      if (token) subscribeToPush(token, true);
+      return true;
+    }
+    return false;
+  }
+
+  if (typeof Notification === "undefined") {
     alert("Brauzeringiz bildirishnomalarni qo'llab-quvvatlamaydi.");
     return false;
   }
@@ -98,13 +100,24 @@ export const requestNotificationPermission = async (token?: string) => {
   return false;
 };
 
-export const showNotification = (title: string, body: string) => {
+export const showNotification = async (title: string, body: string) => {
+  if (Capacitor.isNativePlatform()) {
+    const perm = await LocalNotifications.checkPermissions();
+    if (perm.display === 'granted') {
+      await LocalNotifications.schedule({
+        notifications: [{
+          title, body, id: new Date().getTime(),
+          schedule: { at: new Date(Date.now() + 100) },
+          sound: undefined, attachments: undefined, actionTypeId: '', extra: undefined
+        }]
+      });
+      playNotificationSound();
+    }
+    return;
+  }
+
   if (typeof Notification !== 'undefined' && Notification.permission === "granted") {
-    new Notification(title, {
-      body,
-      icon: '/vite.svg',
-      badge: '/vite.svg'
-    });
+    new Notification(title, { body, icon: '/vite.svg', badge: '/vite.svg' });
     playNotificationSound();
   }
 };
@@ -115,20 +128,15 @@ export function useNotifications(currentUser: any) {
   useEffect(() => {
     if (!currentUser) return;
     
-    // Automatically try to subscribe if permission is already granted
-    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-      subscribeToPush(currentUser.token);
-    }
+    checkNotificationPermission().then(granted => {
+      if (granted) subscribeToPush(currentUser.token);
+    });
 
     const checkReminders = async () => {
       try {
         const [plansRes, remindersRes] = await Promise.all([
-          fetch('/api/repetition/plans', {
-            headers: { 'Authorization': `Bearer ${currentUser.token}` }
-          }),
-          fetch('/api/reminders', {
-            headers: { 'Authorization': `Bearer ${currentUser.token}` }
-          })
+          fetch('/api/repetition/plans', { headers: { 'Authorization': `Bearer ${currentUser.token}` } }),
+          fetch('/api/reminders', { headers: { 'Authorization': `Bearer ${currentUser.token}` } })
         ]);
 
         const now = new Date();
@@ -148,7 +156,7 @@ export function useNotifications(currentUser: any) {
           const activeReminders = reminders.filter((r: any) => r.isActive && r.time === currentTime);
           if (activeReminders.length > 0) {
             shouldNotify = true;
-            notificationBody += activeReminders.map((r: any) => r.name).join(', ') + "\\n";
+            notificationBody += activeReminders.map((r: any) => r.name).join(', ') + "\n";
           }
         }
 
@@ -157,9 +165,7 @@ export function useNotifications(currentUser: any) {
           let surahsToRepeat = [];
           for (const plan of plans) {
             const todaySessions = plan.sessions.filter((s: any) => s.date === todayStr && s.status === 'Kutilmoqda' && s.time === currentTime);
-            if (todaySessions.length > 0) {
-              surahsToRepeat.push(plan.surah.name);
-            }
+            if (todaySessions.length > 0) surahsToRepeat.push(plan.surah.name);
           }
           if (surahsToRepeat.length > 0) {
             shouldNotify = true;
@@ -179,8 +185,6 @@ export function useNotifications(currentUser: any) {
     checkInterval.current = window.setInterval(checkReminders, 30000);
     checkReminders();
 
-    return () => {
-      if (checkInterval.current) clearInterval(checkInterval.current);
-    };
+    return () => { if (checkInterval.current) clearInterval(checkInterval.current); };
   }, [currentUser]);
 }
