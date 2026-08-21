@@ -99,7 +99,7 @@ export const requestNotificationPermission = async (token?: string) => {
 };
 
 export const showNotification = (title: string, body: string) => {
-  if (Notification.permission === "granted") {
+  if (typeof Notification !== 'undefined' && Notification.permission === "granted") {
     new Notification(title, {
       body,
       icon: '/vite.svg',
@@ -116,7 +116,7 @@ export function useNotifications(currentUser: any) {
     if (!currentUser) return;
     
     // Automatically try to subscribe if permission is already granted
-    if (Notification.permission === 'granted') {
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
       subscribeToPush(currentUser.token);
     }
 

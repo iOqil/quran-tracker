@@ -33,7 +33,9 @@ export const Layout: React.FC<LayoutProps> = ({
   const { currentUser, logout, theme, toggleTheme } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const [notificationStatus, setNotificationStatus] = React.useState(Notification.permission);
+  const [notificationStatus, setNotificationStatus] = React.useState(
+    typeof Notification !== 'undefined' ? Notification.permission : 'default'
+  );
   const isOnline = useOnlineStatus();
 
   useNotifications(currentUser);
