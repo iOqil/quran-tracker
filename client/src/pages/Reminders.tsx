@@ -35,6 +35,7 @@ export const Reminders: React.FC = () => {
 
   // Repetition Plan states
   const [repPlanFormSurahs, setRepPlanFormSurahs] = useState<number[]>([]);
+  const [isSurahDropdownOpen, setIsSurahDropdownOpen] = useState(false);
   const [repPlanFormDays, setRepPlanFormDays] = useState('30');
   const [repPlanFormTimes, setRepPlanFormTimes] = useState('09:00');
 
@@ -364,33 +365,46 @@ export const Reminders: React.FC = () => {
         
         <form onSubmit={handleCreateRepetitionPlan} className="add-todo-form" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-            <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', gap: '4px', position: 'relative' }}>
               <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)' }}>Suralarni tanlang</label>
-              <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '8px', backgroundColor: 'var(--bg-card)' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 4px', borderBottom: '1px solid var(--border-color)', marginBottom: '4px', cursor: 'pointer' }}>
-                  <input type="checkbox" onChange={(e) => {
-                     const available = surahs.filter(s => s.isCompleted && !repetitionPlans.some(p => p.surahId === s.id));
-                     if (e.target.checked) setRepPlanFormSurahs(available.map(s => s.id));
-                     else setRepPlanFormSurahs([]);
-                  }} checked={surahs.filter(s => s.isCompleted && !repetitionPlans.some(p => p.surahId === s.id)).length > 0 && repPlanFormSurahs.length === surahs.filter(s => s.isCompleted && !repetitionPlans.some(p => p.surahId === s.id)).length} />
-                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--primary-dark)' }}>Barchasini belgilash</span>
-                </label>
-                {surahs
-                  .filter(s => s.isCompleted && !repetitionPlans.some(p => p.surahId === s.id))
-                  .map(s => (
-                  <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px', cursor: 'pointer' }}>
-                    <input 
-                      type="checkbox" 
-                      checked={repPlanFormSurahs.includes(s.id)} 
-                      onChange={(e) => {
-                         if (e.target.checked) setRepPlanFormSurahs([...repPlanFormSurahs, s.id]);
-                         else setRepPlanFormSurahs(repPlanFormSurahs.filter(id => id !== s.id));
-                      }}
-                    />
-                    <span style={{ fontSize: '13px', color: 'var(--text-main)' }}>{s.name} <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>({s.verseCount} oyat)</span></span>
-                  </label>
-                ))}
+              <div 
+                onClick={() => setIsSurahDropdownOpen(!isSurahDropdownOpen)}
+                className="auth-input" 
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', userSelect: 'none', height: '42px', padding: '0 12px' }}
+              >
+                <span style={{ fontSize: '13px', color: repPlanFormSurahs.length > 0 ? 'var(--text-main)' : 'var(--text-muted)' }}>
+                  {repPlanFormSurahs.length > 0 ? `${repPlanFormSurahs.length} ta sura tanlandi` : '-- Sura tanlang --'}
+                </span>
+                <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>▼</span>
               </div>
+              
+              {isSurahDropdownOpen && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10, marginTop: '4px', maxHeight: '180px', overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '8px', backgroundColor: 'var(--bg-card)', boxShadow: 'var(--shadow)' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 4px', borderBottom: '1px solid var(--border-color)', marginBottom: '4px', cursor: 'pointer' }}>
+                    <input type="checkbox" onChange={(e) => {
+                       const available = surahs.filter(s => s.isCompleted && !repetitionPlans.some(p => p.surahId === s.id));
+                       if (e.target.checked) setRepPlanFormSurahs(available.map(s => s.id));
+                       else setRepPlanFormSurahs([]);
+                    }} checked={surahs.filter(s => s.isCompleted && !repetitionPlans.some(p => p.surahId === s.id)).length > 0 && repPlanFormSurahs.length === surahs.filter(s => s.isCompleted && !repetitionPlans.some(p => p.surahId === s.id)).length} />
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--primary-dark)' }}>Barchasini belgilash</span>
+                  </label>
+                  {surahs
+                    .filter(s => s.isCompleted && !repetitionPlans.some(p => p.surahId === s.id))
+                    .map(s => (
+                    <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px', cursor: 'pointer' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={repPlanFormSurahs.includes(s.id)} 
+                        onChange={(e) => {
+                           if (e.target.checked) setRepPlanFormSurahs([...repPlanFormSurahs, s.id]);
+                           else setRepPlanFormSurahs(repPlanFormSurahs.filter(id => id !== s.id));
+                        }}
+                      />
+                      <span style={{ fontSize: '13px', color: 'var(--text-main)' }}>{s.name} <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>({s.verseCount} oyat)</span></span>
+                    </label>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div style={{ flex: '1 1 150px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
