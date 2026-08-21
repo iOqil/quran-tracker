@@ -283,7 +283,7 @@ export const Reminders: React.FC = () => {
           </div>
 
           {/* Add Reminder Form */}
-          <form onSubmit={handleAddReminder} className="admin-form-layout" style={{ backgroundColor: '#fcf8f9', padding: '12px 16px', borderRadius: '12px', border: '1px dashed var(--primary-light)', marginTop: '8px' }}>
+          <form onSubmit={handleAddReminder} className="admin-form-layout" style={{ backgroundColor: 'var(--bg-app)', padding: '12px 16px', borderRadius: '12px', border: '1px dashed var(--primary-light)', marginTop: '8px' }}>
             <h4 style={{ fontSize: '12px', fontWeight: 700, color: 'var(--primary-dark)', margin: '0 0 8px 0' }}>Yangi Eslatma Qo'shish</h4>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               <input
@@ -342,9 +342,9 @@ export const Reminders: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div className="actionable-sessions-panel" style={{ backgroundColor: '#f4fbf7', padding: '20px', borderRadius: '16px', border: '1px solid #c3e6cb', boxShadow: 'var(--shadow)', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '10px', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
-              <div style={{ color: '#2e7d32', backgroundColor: '#e8f5e9', padding: '12px', borderRadius: '50%', marginBottom: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <AlertCircle size={28} />
+            <div className="actionable-sessions-panel" style={{ backgroundColor: 'var(--bg-card)', padding: '20px', borderRadius: '16px', border: '1px solid #c3e6cb', boxShadow: 'var(--shadow)', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '10px', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+              <div style={{ color: '#2e7d32', backgroundColor: 'transparent', padding: '12px', borderRadius: '50%', marginBottom: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #2e7d32' }}>
+                <AlertCircle size={32} />
               </div>
               <h3 className="surah-section-title" style={{ margin: '0', color: '#2e7d32' }}>Bugungi Progress</h3>
               <p style={{ fontSize: '12.5px', color: '#4caf50', lineHeight: '1.5', margin: '0', maxWidth: '280px' }}>
