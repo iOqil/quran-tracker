@@ -1,7 +1,22 @@
 import { useEffect, useRef } from 'react';
 
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding)
+    .replace(/-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 // A simple beep sound using Web Audio API
-const playNotificationSound = () => {
+export const playNotificationSound = () => {
   try {
     const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioContext) return;
@@ -32,19 +47,55 @@ const playNotificationSound = () => {
   }
 };
 
-export const requestNotificationPermission = async () => {
+export const subscribeToPush = async (token: string) => {
+  if ('serviceWorker' in navigator && 'PushManager' in window) {
+    try {
+      const registration = await navigator.serviceWorker.register('/sw.js');
+      
+      // Get public key from server
+      const keyRes = await fetch('/api/vapid-public-key');
+      const { publicKey } = await keyRes.json();
+      
+      if (!publicKey) return;
+
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey)
+      });
+
+      await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(subscription)
+      });
+
+      console.log('Push subscription successful');
+    } catch (e) {
+      console.error('Push subscription failed:', e);
+    }
+  }
+};
+
+export const requestNotificationPermission = async (token?: string) => {
   if (!("Notification" in window)) {
     alert("Brauzeringiz bildirishnomalarni qo'llab-quvvatlamaydi.");
     return false;
   }
   
   if (Notification.permission === "granted") {
+    if (token) subscribeToPush(token);
     return true;
   }
   
   if (Notification.permission !== "denied") {
     const permission = await Notification.requestPermission();
-    return permission === "granted";
+    if (permission === "granted") {
+      if (token) subscribeToPush(token);
+      return true;
+    }
   }
   
   return false;
@@ -54,7 +105,7 @@ export const showNotification = (title: string, body: string) => {
   if (Notification.permission === "granted") {
     new Notification(title, {
       body,
-      icon: '/vite.svg', // Use app icon if available
+      icon: '/vite.svg',
       badge: '/vite.svg'
     });
     playNotificationSound();
@@ -66,18 +117,21 @@ export function useNotifications(currentUser: any) {
 
   useEffect(() => {
     if (!currentUser) return;
+    
+    // Automatically try to subscribe if permission is already granted
+    if (Notification.permission === 'granted') {
+      subscribeToPush(currentUser.token);
+    }
 
     const checkReminders = async () => {
       try {
-        // Fetch today's actionable items
         const [plansRes, remindersRes] = await Promise.all([
           fetch('/api/repetition/plans', {
             headers: { 'Authorization': `Bearer ${currentUser.token}` }
           }),
-          // Assuming reminders are local for now as per current implementation, 
-          // or we can fetch them if they are on backend.
-          // In the current implementation, reminders are in localStorage!
-          Promise.resolve(localStorage.getItem(`userReminders_${currentUser.id}`))
+          fetch('/api/reminders', {
+            headers: { 'Authorization': `Bearer ${currentUser.token}` }
+          })
         ]);
 
         const now = new Date();
@@ -86,16 +140,14 @@ export function useNotifications(currentUser: any) {
         const currentTime = `${currentHours}:${currentMinutes}`;
         const todayStr = now.toISOString().split('T')[0];
         
-        // Ensure we only trigger once per minute per type
         const triggeredKey = `notified_${todayStr}_${currentTime}`;
         if (sessionStorage.getItem(triggeredKey)) return;
 
         let shouldNotify = false;
         let notificationBody = "";
 
-        // Check local reminders
-        if (remindersRes) {
-          const reminders = JSON.parse(remindersRes);
+        if (remindersRes.ok) {
+          const reminders = await remindersRes.json();
           const activeReminders = reminders.filter((r: any) => r.isActive && r.time === currentTime);
           if (activeReminders.length > 0) {
             shouldNotify = true;
@@ -103,7 +155,6 @@ export function useNotifications(currentUser: any) {
           }
         }
 
-        // Check repetition plans
         if (plansRes.ok) {
           const plans = await plansRes.json();
           let surahsToRepeat = [];
@@ -123,16 +174,12 @@ export function useNotifications(currentUser: any) {
           showNotification("Eslatma!", notificationBody.trim());
           sessionStorage.setItem(triggeredKey, "true");
         }
-
       } catch (err) {
         console.error("Error checking notifications:", err);
       }
     };
 
-    // Check every 30 seconds
     checkInterval.current = window.setInterval(checkReminders, 30000);
-    
-    // Initial check
     checkReminders();
 
     return () => {

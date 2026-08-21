@@ -1,6 +1,10 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import { initCronJobs } from './push';
+
+initCronJobs();
+
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -1250,6 +1254,95 @@ app.delete('/api/repetition/plans/:id', authenticateUser, async (req, res) => {
   } catch (error) {
     console.error('Error deleting plan:', error);
     res.status(500).json({ error: 'Rejani o\'chirishda xatolik' });
+  }
+});
+
+
+// --- PUSH NOTIFICATION ROUTES ---
+app.get('/api/vapid-public-key', (req, res) => {
+  res.json({ publicKey: process.env.VAPID_PUBLIC_KEY });
+});
+
+app.post('/api/push/subscribe', authenticateUser, async (req: any, res: any) => {
+  try {
+    const user = req.user;
+    const subscription = req.body;
+    
+    // Upsert subscription (if endpoint exists, ignore or update)
+    const existing = await prisma.pushSubscription.findFirst({
+      where: { endpoint: subscription.endpoint }
+    });
+    
+    if (!existing) {
+      await prisma.pushSubscription.create({
+        data: {
+          userId: user.id,
+          endpoint: subscription.endpoint,
+          auth: subscription.keys.auth,
+          p256dh: subscription.keys.p256dh
+        }
+      });
+    }
+    res.status(201).json({ success: true });
+  } catch (error) {
+    console.error('Push subscribe error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
+// --- REMINDER ROUTES ---
+app.get('/api/reminders', authenticateUser, async (req: any, res: any) => {
+  try {
+    const reminders = await prisma.reminder.findMany({
+      where: { userId: req.user.id }
+    });
+    res.json(reminders);
+  } catch (err) {
+    res.status(500).json({ error: 'Xatolik yuz berdi' });
+  }
+});
+
+app.post('/api/reminders', authenticateUser, async (req: any, res: any) => {
+  try {
+    const { name, time, isActive } = req.body;
+    const reminder = await prisma.reminder.create({
+      data: {
+        userId: req.user.id,
+        name,
+        time,
+        isActive: isActive !== undefined ? isActive : true
+      }
+    });
+    res.json(reminder);
+  } catch (err) {
+    res.status(500).json({ error: 'Xatolik yuz berdi' });
+  }
+});
+
+app.put('/api/reminders/:id', authenticateUser, async (req: any, res: any) => {
+  try {
+    const { id } = req.params;
+    const { isActive, name, time } = req.body;
+    const reminder = await prisma.reminder.update({
+      where: { id: parseInt(id) },
+      data: { isActive, name, time }
+    });
+    res.json(reminder);
+  } catch (err) {
+    res.status(500).json({ error: 'Xatolik yuz berdi' });
+  }
+});
+
+app.delete('/api/reminders/:id', authenticateUser, async (req: any, res: any) => {
+  try {
+    const { id } = req.params;
+    await prisma.reminder.delete({
+      where: { id: parseInt(id) }
+    });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Xatolik yuz berdi' });
   }
 });
 

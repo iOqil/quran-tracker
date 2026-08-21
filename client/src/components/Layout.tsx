@@ -143,7 +143,7 @@ export const Layout: React.FC<LayoutProps> = ({
               <button
                 className="admin-toggle-pill"
                 onClick={async () => {
-                  const granted = await requestNotificationPermission();
+                  const granted = await requestNotificationPermission(currentUser.token);
                   if (granted) setNotificationStatus('granted');
                 }}
                 title="Eslatmalar uchun ruxsat berish"

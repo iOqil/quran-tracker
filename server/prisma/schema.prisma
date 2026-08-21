@@ -19,6 +19,8 @@ model User {
   activities         ActivityLog[]
   repetitionPlans    RepetitionPlan[]
   repetitionSessions RepetitionSession[]
+  reminders          Reminder[]
+  pushSubscriptions  PushSubscription[]
   createdAt          DateTime            @default(now())
 }
 
@@ -95,7 +97,7 @@ model RepetitionSession {
   dayNumber  Int            // e.g. 1, 2, 7, 30
   time       String         // e.g. "08:00"
   date       String         // "YYYY-MM-DD" e.g. "2026-08-20"
-  status     String         @default("Kutilmoqda") // "Bajarildi" | "Qoniqarli" | "O‘tkazib yuborildi" | "Kutilmoqda"
+  status     String         @default("Kutilmoqda") // "Bajarildi" | "Qoniqarli" | "O'tkazib yuborildi" | "Kutilmoqda"
   createdAt  DateTime       @default(now())
 
   user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -103,3 +105,26 @@ model RepetitionSession {
 
   @@unique([planId, date, time])
 }
+
+model Reminder {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  name      String
+  time      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PushSubscription {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  endpoint  String   @db.Text
+  auth      String
+  p256dh    String
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
