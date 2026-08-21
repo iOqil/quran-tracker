@@ -34,7 +34,7 @@ export const Reminders: React.FC = () => {
   const [newReminderName, setNewReminderName] = useState('');
 
   // Repetition Plan states
-  const [repPlanFormSurah, setRepPlanFormSurah] = useState('');
+  const [repPlanFormSurahs, setRepPlanFormSurahs] = useState<number[]>([]);
   const [repPlanFormDays, setRepPlanFormDays] = useState('30');
   const [repPlanFormTimes, setRepPlanFormTimes] = useState('09:00');
 
@@ -97,7 +97,10 @@ export const Reminders: React.FC = () => {
   // Repetition Actions
   const handleCreateRepetitionPlan = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser || !repPlanFormSurah) return;
+    if (!currentUser || repPlanFormSurahs.length === 0) {
+      alert("Iltimos, kamida bitta surani tanlang.");
+      return;
+    }
     
     const daysCount = parseInt(repPlanFormDays.trim(), 10);
     if (isNaN(daysCount) || daysCount <= 0 || daysCount > 100) {
@@ -120,14 +123,14 @@ export const Reminders: React.FC = () => {
           'Authorization': `Bearer ${currentUser.token}`
         },
         body: JSON.stringify({
-          surahId: parseInt(repPlanFormSurah, 10),
+          surahIds: repPlanFormSurahs,
           days: parsedDays,
           times: parsedTimes
         })
       });
       if (res.ok) {
         fetchData();
-        setRepPlanFormSurah('');
+        setRepPlanFormSurahs([]);
       } else {
         const err = await res.json();
         alert(err.error || "Xatolik yuz berdi");
@@ -362,22 +365,32 @@ export const Reminders: React.FC = () => {
         <form onSubmit={handleCreateRepetitionPlan} className="add-todo-form" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
             <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)' }}>Sura tanlang</label>
-              <select
-                className="auth-input"
-                value={repPlanFormSurah}
-                onChange={e => setRepPlanFormSurah(e.target.value)}
-                style={{ width: '100%' }}
-                required
-              >
-                <option value="">-- Sura tanlang --</option>
+              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)' }}>Suralarni tanlang</label>
+              <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '8px', backgroundColor: 'var(--bg-card)' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 4px', borderBottom: '1px solid var(--border-color)', marginBottom: '4px', cursor: 'pointer' }}>
+                  <input type="checkbox" onChange={(e) => {
+                     const available = surahs.filter(s => s.isCompleted && !repetitionPlans.some(p => p.surahId === s.id));
+                     if (e.target.checked) setRepPlanFormSurahs(available.map(s => s.id));
+                     else setRepPlanFormSurahs([]);
+                  }} checked={surahs.filter(s => s.isCompleted && !repetitionPlans.some(p => p.surahId === s.id)).length > 0 && repPlanFormSurahs.length === surahs.filter(s => s.isCompleted && !repetitionPlans.some(p => p.surahId === s.id)).length} />
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--primary-dark)' }}>Barchasini belgilash</span>
+                </label>
                 {surahs
                   .filter(s => s.isCompleted && !repetitionPlans.some(p => p.surahId === s.id))
                   .map(s => (
-                    <option key={s.id} value={s.id}>{s.name} ({s.verseCount} oyat)</option>
-                  ))
-                }
-              </select>
+                  <label key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px', cursor: 'pointer' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={repPlanFormSurahs.includes(s.id)} 
+                      onChange={(e) => {
+                         if (e.target.checked) setRepPlanFormSurahs([...repPlanFormSurahs, s.id]);
+                         else setRepPlanFormSurahs(repPlanFormSurahs.filter(id => id !== s.id));
+                      }}
+                    />
+                    <span style={{ fontSize: '13px', color: 'var(--text-main)' }}>{s.name} <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>({s.verseCount} oyat)</span></span>
+                  </label>
+                ))}
+              </div>
             </div>
 
             <div style={{ flex: '1 1 150px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -409,10 +422,10 @@ export const Reminders: React.FC = () => {
             </div>
           </div>
 
-          <span style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+          {/* <span style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: '1.4' }}>
             ℹ️ <strong>Takrorlash kunlari (1, 2, 3, 4, 7...)</strong>: Surani yodlagan kuningizdan keyingi nisbiy kunlar. 
             1 = Yodlangan kunning o'zi (bugun), 2 = ertasi kuni, 7 = 7-kuni va h.k.
-          </span>
+          </span> */}
           <button type="submit" className="add-todo-btn" style={{ alignSelf: 'flex-start' }}>
             <Plus size={16} /> Reja yaratish
           </button>
