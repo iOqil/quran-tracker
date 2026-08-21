@@ -131,6 +131,70 @@ export const requestNotificationPermission = async (token?: string) => {
   }
 };
 
+let lastSyncHash = "";
+
+const syncNativeNotifications = async (plans: any[], reminders: any[]) => {
+  if (!Capacitor.isNativePlatform()) return;
+  
+  const currentHash = JSON.stringify(plans) + JSON.stringify(reminders);
+  if (currentHash === lastSyncHash) return;
+  lastSyncHash = currentHash;
+
+  try {
+    const perm = await LocalNotifications.checkPermissions();
+    if (perm.display !== 'granted') return;
+
+    // Clear all existing scheduled notifications to avoid duplicates
+    const pending = await LocalNotifications.getPending();
+    if (pending.notifications.length > 0) {
+      await LocalNotifications.cancel(pending);
+    }
+
+    const notificationsToSchedule = [];
+    let idCounter = 1;
+
+    // Schedule daily reminders
+    for (const r of reminders) {
+      if (!r.isActive || !r.time) continue;
+      const [hour, minute] = r.time.split(':').map(Number);
+      notificationsToSchedule.push({
+        title: "Eslatma",
+        body: r.name,
+        id: idCounter++,
+        schedule: { 
+          on: { hour, minute }, 
+          allowWhileIdle: true 
+        }
+      });
+    }
+
+    // Schedule specific repetition sessions
+    const now = new Date();
+    for (const plan of plans) {
+      for (const s of plan.sessions) {
+        if (s.status === 'Kutilmoqda' && s.date && s.time) {
+          const sessionDate = new Date(`${s.date}T${s.time}:00`);
+          if (sessionDate > now) {
+            notificationsToSchedule.push({
+              title: "Takrorlash vaqti",
+              body: `${plan.surah?.name || 'Sura'} - takrorlash jadvali bo'yicha`,
+              id: idCounter++,
+              schedule: { at: sessionDate, allowWhileIdle: true }
+            });
+          }
+        }
+      }
+    }
+
+    if (notificationsToSchedule.length > 0) {
+      // Capacitor limits how many you can schedule at once, but usually it's fine for < 50
+      await LocalNotifications.schedule({ notifications: notificationsToSchedule });
+    }
+  } catch (err) {
+    console.error("Native sync error:", err);
+  }
+};
+
 export function useNotifications(currentUser: any) {
   const checkInterval = useRef<number | null>(null);
 
@@ -141,57 +205,74 @@ export function useNotifications(currentUser: any) {
       if (granted) subscribeToPush(currentUser.token);
     });
 
-    const checkReminders = async () => {
+    const fetchAndSync = async () => {
       try {
         const [plansRes, remindersRes] = await Promise.all([
           fetch('/api/repetition/plans', { headers: { 'Authorization': `Bearer ${currentUser.token}` } }),
           fetch('/api/reminders', { headers: { 'Authorization': `Bearer ${currentUser.token}` } })
         ]);
 
-        const now = new Date();
-        const currentHours = now.getHours().toString().padStart(2, '0');
-        const currentMinutes = now.getMinutes().toString().padStart(2, '0');
-        const currentTime = `${currentHours}:${currentMinutes}`;
-        const todayStr = now.toISOString().split('T')[0];
-        
-        const triggeredKey = `notified_${todayStr}_${currentTime}`;
-        if (sessionStorage.getItem(triggeredKey)) return;
-
-        let shouldNotify = false;
-        let notificationBody = "";
-
-        if (remindersRes.ok) {
-          const reminders = await remindersRes.json();
-          const activeReminders = reminders.filter((r: any) => r.isActive && r.time === currentTime);
-          if (activeReminders.length > 0) {
-            shouldNotify = true;
-            notificationBody += activeReminders.map((r: any) => r.name).join(', ') + "\n";
-          }
-        }
-
-        if (plansRes.ok) {
+        if (plansRes.ok && remindersRes.ok) {
           const plans = await plansRes.json();
-          let surahsToRepeat = [];
-          for (const plan of plans) {
-            const todaySessions = plan.sessions.filter((s: any) => s.date === todayStr && s.status === 'Kutilmoqda' && s.time === currentTime);
-            if (todaySessions.length > 0) surahsToRepeat.push(plan.surah.name);
-          }
-          if (surahsToRepeat.length > 0) {
-            shouldNotify = true;
-            notificationBody += `Takrorlash: ${surahsToRepeat.join(', ')}`;
-          }
-        }
-
-        if (shouldNotify) {
-          showNotification("Eslatma!", notificationBody.trim());
-          sessionStorage.setItem(triggeredKey, "true");
+          const reminders = await remindersRes.json();
+          await syncNativeNotifications(plans, reminders);
+          return { plans, reminders };
         }
       } catch (err) {
-        console.error("Error checking notifications:", err);
+        console.error("Fetch plans/reminders error:", err);
+      }
+      return null;
+    };
+
+    const checkReminders = async () => {
+      const data = await fetchAndSync();
+      if (!data) return;
+      const { plans, reminders } = data;
+
+      // Web Push polling logic (only runs if app is open)
+      const now = new Date();
+      const currentHours = now.getHours().toString().padStart(2, '0');
+      const currentMinutes = now.getMinutes().toString().padStart(2, '0');
+      const currentTime = `${currentHours}:${currentMinutes}`;
+      const todayStr = now.toISOString().split('T')[0];
+      
+      const triggeredKey = `notified_${todayStr}_${currentTime}`;
+      if (sessionStorage.getItem(triggeredKey)) return;
+
+      let shouldNotify = false;
+      let notificationBody = "";
+
+      const activeReminders = reminders.filter((r: any) => r.isActive && r.time === currentTime);
+      if (activeReminders.length > 0) {
+        shouldNotify = true;
+        notificationBody += activeReminders.map((r: any) => r.name).join(', ') + "\n";
+      }
+
+      let surahsToRepeat = [];
+      for (const plan of plans) {
+        const todaySessions = plan.sessions.filter((s: any) => s.date === todayStr && s.status === 'Kutilmoqda' && s.time === currentTime);
+        if (todaySessions.length > 0) surahsToRepeat.push(plan.surah.name);
+      }
+      if (surahsToRepeat.length > 0) {
+        shouldNotify = true;
+        notificationBody += `Takrorlash: ${surahsToRepeat.join(', ')}`;
+      }
+
+      if (shouldNotify) {
+        // Fallback to web notification logic since native will handle it via pre-scheduled
+        if (!Capacitor.isNativePlatform()) {
+          showNotification("Eslatma!", notificationBody.trim());
+        }
+        sessionStorage.setItem(triggeredKey, "true");
       }
     };
 
-    checkInterval.current = window.setInterval(checkReminders, 30000);
+    // We only need to poll for web. For native, fetchAndSync schedules everything ahead!
+    if (!Capacitor.isNativePlatform()) {
+      checkInterval.current = window.setInterval(checkReminders, 30000);
+    }
+    
+    // Always run once on mount to schedule (native) or alert (web)
     checkReminders();
 
     return () => { if (checkInterval.current) clearInterval(checkInterval.current); };

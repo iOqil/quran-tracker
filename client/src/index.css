@@ -1,4 +1,4 @@
-﻿@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,500&family=Amiri:ital@0;1&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,500&family=Amiri:ital@0;1&display=swap');
 
 :root {
   --primary: #E57399;
@@ -90,7 +90,7 @@ body {
 
 /* Mobile top header */
 .main-header {
-  padding: 16px 20px;
+  padding: calc(env(safe-area-inset-top, 0px) + 16px) 20px 16px 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -2032,7 +2032,7 @@ input:checked + .slider::before {
     display: none !important;
   }
   .main-header {
-    padding: 12px 16px !important;
+    padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px 12px 16px !important;
   }
   .main-header-title {
     font-size: 19px !important;
