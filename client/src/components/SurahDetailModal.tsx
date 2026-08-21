@@ -147,7 +147,7 @@ export const SurahDetailModal: React.FC<SurahDetailModalProps> = ({
         <div style={{ padding: '12px 16px', backgroundColor: 'var(--bg-card)', borderBottom: '1px solid var(--border-color)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Volume2 size={14} color="var(--primary-color)" /> Oyatma-oyat Tilovat
+              <Volume2 size={14} color="var(--primary)" /> Oyatma-oyat Tilovat
             </span>
             <div style={{ display: 'flex', gap: '6px' }}>
               <select 
@@ -163,8 +163,8 @@ export const SurahDetailModal: React.FC<SurahDetailModalProps> = ({
           </div>
           
           <div className="custom-audio-player">
-            <button className="play-pause-btn" onClick={togglePlay} style={{ backgroundColor: 'var(--primary-color)' }}>
-              {isPlaying ? <Pause size={20} color="white" fill="white" /> : <Play size={20} color="white" fill="white" style={{ marginLeft: '3px' }} />}
+            <button className="play-pause-btn" onClick={togglePlay} style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--primary-light)', boxShadow: '0 4px 12px rgba(229, 115, 153, 0.15)' }}>
+              {isPlaying ? <Pause size={20} color="var(--primary)" fill="var(--primary)" /> : <Play size={20} color="var(--primary)" fill="var(--primary)" style={{ marginLeft: '3px' }} />}
             </button>
             <div className="audio-progress-info">
               <span className="audio-status-text">
@@ -257,7 +257,7 @@ export const SurahDetailModal: React.FC<SurahDetailModalProps> = ({
                         style={{ 
                           background: 'none', 
                           border: 'none', 
-                          color: isPlayingNow ? 'var(--primary-color)' : 'var(--text-muted)',
+                          color: isPlayingNow ? 'var(--primary)' : 'var(--text-muted)',
                           cursor: 'pointer',
                           padding: '4px',
                           display: 'flex',
