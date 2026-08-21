@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { UserSession } from '../types';
 
 interface AuthContextType {
@@ -7,6 +7,8 @@ interface AuthContextType {
   logout: () => void;
   adminMode: boolean;
   setAdminMode: (mode: boolean) => void;
+  theme: 'light' | 'dark';
+  toggleTheme: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -35,6 +37,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return false;
   });
 
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('theme');
+    return (saved as 'light' | 'dark') || 'light';
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => {
+      const next = prev === 'light' ? 'dark' : 'light';
+      localStorage.setItem('theme', next);
+      return next;
+    });
+  };
+
   const logout = () => {
     localStorage.removeItem('userSession');
     setCurrentUser(null);
@@ -42,7 +61,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ currentUser, setCurrentUser, logout, adminMode, setAdminMode }}>
+    <AuthContext.Provider
+      value={{
+        currentUser,
+        setCurrentUser,
+        logout,
+        adminMode,
+        setAdminMode,
+        theme,
+        toggleTheme
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

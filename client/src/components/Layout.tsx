@@ -9,7 +9,9 @@ import {
   Users,
   CheckSquare,
   Sparkles,
-  Heart
+  Heart,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 interface LayoutProps {
@@ -25,7 +27,7 @@ export const Layout: React.FC<LayoutProps> = ({
   setAdminMode,
   contextValues
 }) => {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, theme, toggleTheme } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -132,6 +134,17 @@ export const Layout: React.FC<LayoutProps> = ({
             <p className="main-header-subtitle">{subtitle}</p>
           </div>
           <div className="main-header-actions">
+            {/* Theme Toggle Button */}
+            <button
+              className="admin-toggle-pill"
+              onClick={toggleTheme}
+              title="Mavzuni o'zgartirish"
+              style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
+              <span className="desktop-only">{theme === 'light' ? 'Tungi' : 'Kunduzgi'}</span>
+            </button>
+
             {currentUser.role === 'admin' && location.pathname === '/' && (
               <button
                 className={`admin-toggle-pill ${adminMode ? 'active' : ''}`}

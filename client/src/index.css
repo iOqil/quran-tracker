@@ -5,6 +5,7 @@
   --primary-dark: #D84C7B;
   --primary-light: #FCD3E1;
   --bg-app: #FFF7F9;
+  --bg-header-rgba: rgba(255, 253, 254, 0.95);
   --bg-card: #FFFFFF;
   --text-main: #3C2E3D;
   --text-muted: #8E7A8F;
@@ -18,6 +19,29 @@
   --font-serif: 'Playfair Display', serif;
   --font-arabic: 'Amiri', serif;
 }
+
+[data-theme="dark"] {
+  --primary: #F48FB1;
+  --primary-dark: #F8BBD0;
+  --primary-light: #4A212E;
+  --bg-app: #120e13;
+  --bg-card: #1c151c;
+  --bg-header-rgba: rgba(18, 14, 19, 0.95);
+  --text-main: #f0e6f2;
+  --text-muted: #ab9cab;
+  --text-primary: #f0e6f2;
+  --text-color: #f0e6f2;
+  --border-color: #332633;
+  --shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+  --shadow-hover: 0 12px 40px rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="dark"] .level-0 { background-color: #241a25; }
+[data-theme="dark"] .level-1 { background-color: #4a212e; }
+[data-theme="dark"] .level-2 { background-color: #7d334d; }
+[data-theme="dark"] .level-3 { background-color: #c9517b; }
+[data-theme="dark"] .level-4 { background-color: #e85c8e; }
+
 
 * {
   margin: 0;
@@ -43,7 +67,7 @@ body {
   display: flex;
   flex-direction: column;
   padding-bottom: 80px; /* space for bottom nav on mobile */
-  background-color: #FFFDFE;
+  background-color: var(--bg-app);
 }
 
 /* Sidebar - hidden on mobile */
@@ -56,7 +80,7 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background-color: #FFFDFE;
+  background-color: var(--bg-app);
   min-height: 100vh;
 }
 
@@ -69,7 +93,7 @@ body {
   border-bottom: 1px solid var(--border-color);
   position: sticky;
   top: 0;
-  background-color: rgba(255, 253, 254, 0.95);
+  background-color: var(--bg-header-rgba);
   backdrop-filter: blur(8px);
   z-index: 10;
 }
@@ -100,7 +124,7 @@ body {
   padding: 6px 12px;
   border-radius: 20px;
   border: 1px solid var(--border-color);
-  background-color: #FFFFFF;
+  background-color: var(--bg-card);
   color: var(--text-muted);
   cursor: pointer;
   font-size: 11px;
@@ -205,7 +229,7 @@ body {
 /* Admin Card */
 .admin-card {
   margin: 16px 20px;
-  background-color: #FFF6F8;
+  background-color: var(--bg-app);
   border: 1.5px dashed var(--primary);
   border-radius: 20px;
   padding: 16px;
@@ -249,7 +273,7 @@ body {
   border-radius: 10px;
   border: 1px solid var(--border-color);
   font-size: 14px;
-  background-color: #FFFFFF;
+  background-color: var(--bg-card);
   color: var(--text-main);
   outline: none;
   width: 100%;
@@ -352,7 +376,7 @@ body {
   font-weight: 600;
   border: none;
   cursor: pointer;
-  background-color: #FFFFFF;
+  background-color: var(--bg-card);
   color: var(--text-muted);
   border: 1px solid var(--border-color);
   transition: var(--transition);
@@ -563,7 +587,7 @@ body {
 
 .modal-content {
   width: 100%;
-  background-color: #FFFDFE;
+  background-color: var(--bg-app);
   border-top-left-radius: 28px;
   border-top-right-radius: 28px;
   max-height: 80vh;
@@ -613,7 +637,7 @@ body {
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid var(--border-color);
-  background-color: #FFF9FA;
+  background-color: var(--bg-app);
   flex-wrap: wrap;
   gap: 6px;
 }
@@ -798,7 +822,7 @@ body {
 }
 
 .juz-progress-box {
-  background-color: #FFFFFF;
+  background-color: var(--bg-card);
   padding: 12px;
   border-radius: 14px;
   border: 1px solid var(--border-color);
@@ -815,7 +839,7 @@ body {
 
 .juz-progress-track {
   height: 6px;
-  background-color: #F8EBEE;
+  background-color: var(--border-color);
   border-radius: 3px;
   overflow: hidden;
 }
@@ -969,7 +993,7 @@ body {
   cursor: pointer;
   transition: var(--transition);
   border: 1px solid var(--primary-dark);
-  background-color: #FFFFFF;
+  background-color: var(--bg-card);
   color: var(--primary-dark);
   text-align: center;
   text-decoration: none;
@@ -987,7 +1011,7 @@ body {
   left: 0;
   right: 0;
   height: 68px;
-  background-color: #FFFDFE;
+  background-color: var(--bg-app);
   border-top: 1px solid var(--border-color);
   display: flex;
   justify-content: space-around;
@@ -1053,7 +1077,7 @@ body {
 .auth-card {
   width: 100%;
   max-width: 420px;
-  background-color: #FFFFFF;
+  background-color: var(--bg-card);
   border-radius: 24px;
   padding: 30px;
   border: 1px solid var(--border-color);
@@ -1107,7 +1131,7 @@ body {
 }
 
 .auth-demo-hints code {
-  background-color: #FFFFFF;
+  background-color: var(--bg-card);
   padding: 1px 4px;
   border-radius: 4px;
   border: 1px solid var(--border-color);
@@ -1161,14 +1185,14 @@ body {
     grid-template-columns: 280px 1fr; /* Split: Sidebar + Main Content */
     overflow: hidden;
     padding-bottom: 0;
-    background-color: #FFFDFE;
+    background-color: var(--bg-app);
   }
 
   /* Sidebar - Visible on Desktop, full height */
   .app-sidebar {
     display: flex;
     flex-direction: column;
-    background-color: #FFFFFF;
+    background-color: var(--bg-card);
     border-right: 1px solid var(--border-color);
     padding: 30px 24px;
     height: 100vh;
@@ -1262,7 +1286,7 @@ body {
   }
 
   .sidebar-last-studied {
-    background-color: #FFFDFE;
+    background-color: var(--bg-app);
     border: 1px dashed var(--primary);
     border-radius: 16px;
     padding: 16px;
@@ -1275,11 +1299,11 @@ body {
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    background-color: #FFFDFE;
+    background-color: var(--bg-app);
   }
 
   .main-header {
-    background-color: #FFFFFF;
+    background-color: var(--bg-card);
     border-bottom: 1px solid var(--border-color);
     padding: 24px 40px;
     position: static;
@@ -1540,7 +1564,7 @@ body {
 
 /* GitHub Heatmap Calendar */
 .heatmap-wrapper {
-  background-color: #FFFFFF;
+  background-color: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: 16px;
   padding: 16px 20px;
@@ -1646,7 +1670,7 @@ body {
 
 /* Todo Widget Styling */
 .todo-widget-card {
-  background-color: #FFFFFF;
+  background-color: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: 16px;
   padding: 16px;
@@ -1887,7 +1911,7 @@ input:checked + .slider::before {
   border-radius: 10px;
   font-family: var(--font-sans);
   font-size: 14px;
-  background-color: #FFFFFF;
+  background-color: var(--bg-card);
   color: var(--text-main);
   outline: none;
   transition: var(--transition);
