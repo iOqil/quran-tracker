@@ -192,6 +192,13 @@ export const SurahDetailModal: React.FC<SurahDetailModalProps> = ({
             onPlay={() => setIsPlaying(true)}
             style={{ display: 'none' }} 
           />
+          
+          <div style={{ marginTop: '12px', padding: '8px', backgroundColor: 'var(--bg-app)', borderRadius: '6px', border: '1px dashed var(--border-color)', fontSize: '9.5px', color: 'var(--text-muted)', lineHeight: '1.6' }}>
+            <span style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: '4px', display: 'block' }}>Ilovadagi manbalar:</span>
+            🎵 <b>Audio tilovat:</b> everyayah.com (Xalqaro ochiq audio baza)<br/>
+            📖 <b>Arabcha matn:</b> quran.com (Tasdiqlangan Usmoniy xat)<br/>
+            🇺🇿 <b>O'zbekcha tarjima:</b> Shayx Muhammad Sodiq Muhammad Yusuf (quran.com API)
+          </div>
         </div>
 
         <div className="modal-actions">
