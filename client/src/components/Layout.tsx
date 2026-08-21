@@ -179,7 +179,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 title="Sura qo'shish paneli"
               >
                 <Sparkles size={16} />
-                <span>Admin Rejimi</span>
+                <span className="desktop-only">Admin Rejimi</span>
               </button>
             )}
             <button className="admin-toggle-pill mobile-only" onClick={handleLogoutClick} title="Tizimdan chiqish">
