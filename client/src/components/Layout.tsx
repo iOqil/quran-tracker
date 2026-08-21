@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { requestNotificationPermission, useNotifications } from '../services/notificationService';
 import { useAuth } from '../context/AuthContext';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
 interface LayoutProps {
   lastStudied: { name: string; time: string } | null;
@@ -33,6 +34,7 @@ export const Layout: React.FC<LayoutProps> = ({
   const location = useLocation();
   const navigate = useNavigate();
   const [notificationStatus, setNotificationStatus] = React.useState(Notification.permission);
+  const isOnline = useOnlineStatus();
 
   useNotifications(currentUser);
 
@@ -132,6 +134,11 @@ export const Layout: React.FC<LayoutProps> = ({
 
       {/* Main Content Area */}
       <main className="app-main-content">
+        {!isOnline && (
+          <div style={{ backgroundColor: '#ff4d4f', color: 'white', textAlign: 'center', padding: '6px', fontSize: '13px', fontWeight: 600 }}>
+            Tarmoq aloqasi yo'q. Oflayn rejimdasiz. Ma'lumotlar saqlanmoqda...
+          </div>
+        )}
         {/* Top Header bar */}
         <header className="main-header">
           <div className="main-header-info">

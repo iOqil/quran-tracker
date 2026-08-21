@@ -50,7 +50,7 @@ export const playNotificationSound = () => {
 export const subscribeToPush = async (token: string) => {
   if ('serviceWorker' in navigator && 'PushManager' in window) {
     try {
-      const registration = await navigator.serviceWorker.register('/sw.js');
+      const registration = await navigator.serviceWorker.ready;
       
       // Get public key from server
       const keyRes = await fetch('/api/vapid-public-key');

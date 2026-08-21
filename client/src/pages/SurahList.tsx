@@ -257,6 +257,10 @@ export const SurahList: React.FC = () => {
       setStats(statsData);
       fetchActivities();
     } catch (error) {
+      if (!navigator.onLine) {
+        console.log('Oflayn rejim: Amaliyot navbatga qo\'yildi');
+        return;
+      }
       setSelectedSurah({
         ...selectedSurah,
         memorizedVerses: previousVerses,
@@ -322,6 +326,10 @@ export const SurahList: React.FC = () => {
       setStats(statsData);
       fetchActivities();
     } catch (error) {
+      if (!navigator.onLine) {
+        console.log('Oflayn rejim: Amaliyot navbatga qo\'yildi');
+        return;
+      }
       setSelectedSurah({
         ...selectedSurah,
         memorizedVerses: previousVerses,
