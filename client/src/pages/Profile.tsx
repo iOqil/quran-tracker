@@ -231,15 +231,9 @@ export const Profile: React.FC = () => {
               Qalbimdagi Qur'on ilovasining Android (.apk) versiyasini yuklab oling. Bu orqali siz ilovani Play Market'dagi kabi telefoningizga to'g'ridan to'g'ri o'rnatishingiz, doimiy oflayn foydalanishingiz va ovozli bildirishnomalardan uzluksiz bahramand bo'lishingiz mumkin.
             </p>
             <a 
-              href="/QuranTracker.apk" 
-              download
+              href="https://github.com/iOqil/quran-tracker/releases/download/latest-build/app-debug.apk" 
               className="admin-submit-btn" 
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', textDecoration: 'none' }}
-              onClick={(e) => {
-                // For now, prevent default and alert that it's being generated
-                e.preventDefault();
-                alert("APK fayl yaratilmoqda. Tez orada ushbu tugma orqali yuklab olishingiz mumkin bo'ladi (Capacitor yordamida build jarayoni yakunlangach).");
-              }}
             >
               <Download size={18} />
               Android APK Yuklab Olish
