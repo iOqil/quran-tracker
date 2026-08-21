@@ -13,7 +13,9 @@ import {
   Sun,
   Moon
 } from 'lucide-react';
+import { requestNotificationPermission, useNotifications } from '../services/notificationService';
 import { useAuth } from '../context/AuthContext';
+
 interface LayoutProps {
   lastStudied: { name: string; time: string } | null;
   adminMode: boolean;
@@ -30,6 +32,9 @@ export const Layout: React.FC<LayoutProps> = ({
   const { currentUser, logout, theme, toggleTheme } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [notificationStatus, setNotificationStatus] = React.useState(Notification.permission);
+
+  useNotifications(currentUser);
 
   if (!currentUser) return null;
 
@@ -134,6 +139,21 @@ export const Layout: React.FC<LayoutProps> = ({
             <p className="main-header-subtitle">{subtitle}</p>
           </div>
           <div className="main-header-actions">
+            {notificationStatus !== 'granted' && (
+              <button
+                className="admin-toggle-pill"
+                onClick={async () => {
+                  const granted = await requestNotificationPermission();
+                  if (granted) setNotificationStatus('granted');
+                }}
+                title="Eslatmalar uchun ruxsat berish"
+                style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: 'var(--primary-light)', color: 'var(--primary-dark)' }}
+              >
+                <Bell size={16} />
+                <span className="desktop-only">Eslatmalarni yoqish</span>
+              </button>
+            )}
+            
             {/* Theme Toggle Button */}
             <button
               className="admin-toggle-pill"
