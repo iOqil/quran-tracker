@@ -6,6 +6,12 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   server: {
     cleartext: true
+  },
+  plugins: {
+    StatusBar: {
+      backgroundColor: '#E57399',
+      style: 'DARK'
+    }
   }
 };
 
