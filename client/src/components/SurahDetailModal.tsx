@@ -33,23 +33,28 @@ export const SurahDetailModal: React.FC<SurahDetailModalProps> = ({
   const [repeatCount, setRepeatCount] = useState<number>(1);
   const [currentRepeat, setCurrentRepeat] = useState<number>(1);
   
-  // Arabic Text state
-  const [arabicText, setArabicText] = useState<string[]>([]);
+  // Verse Text state (Arabic + Translation)
+  const [verseData, setVerseData] = useState<{arabic: string, translation: string}[]>([]);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const verseRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
 
   useEffect(() => {
-    // Fetch Arabic text
-    fetch(`https://api.quran.com/api/v4/quran/verses/uthmani?chapter_number=${selectedSurah.number}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data && data.verses) {
-          const texts = data.verses.map((v: any) => v.text_uthmani);
-          setArabicText(texts);
+    // Fetch Arabic text and Uzbek Translation concurrently
+    Promise.all([
+      fetch(`https://api.quran.com/api/v4/quran/verses/uthmani?chapter_number=${selectedSurah.number}`).then(res => res.json()),
+      fetch(`https://api.quran.com/api/v4/quran/translations/55?chapter_number=${selectedSurah.number}`).then(res => res.json())
+    ])
+      .then(([arabicRes, transRes]) => {
+        if (arabicRes?.verses && transRes?.translations) {
+          const combined = arabicRes.verses.map((v: any, idx: number) => ({
+            arabic: v.text_uthmani,
+            translation: transRes.translations[idx]?.text?.replace(/<[^>]+>/g, '') || ''
+          }));
+          setVerseData(combined);
         }
       })
-      .catch(err => console.error("Error fetching Arabic text:", err));
+      .catch(err => console.error("Error fetching verse data:", err));
   }, [selectedSurah.number]);
 
   const handleReciterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -280,19 +285,27 @@ export const SurahDetailModal: React.FC<SurahDetailModalProps> = ({
                     </div>
                   </div>
                   
-                  {/* Arabic Text Section */}
-                  {arabicText[i] && (
-                    <div style={{ 
-                      fontSize: '24px', 
-                      textAlign: 'right', 
-                      fontFamily: '"Amiri", "Times New Roman", serif',
-                      color: 'var(--text-color)',
-                      lineHeight: '1.9',
-                      paddingTop: '12px',
-                      paddingBottom: '4px',
-                      direction: 'rtl'
-                    }}>
-                      {arabicText[i]}
+                  {/* Arabic Text & Translation Section */}
+                  {verseData[i] && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingTop: '12px', paddingBottom: '4px' }}>
+                      <div style={{ 
+                        fontSize: '24px', 
+                        textAlign: 'right', 
+                        fontFamily: '"Amiri", "Times New Roman", serif',
+                        color: 'var(--text-color)',
+                        lineHeight: '1.9',
+                        direction: 'rtl'
+                      }}>
+                        {verseData[i].arabic}
+                      </div>
+                      <div style={{
+                        fontSize: '13.5px',
+                        color: 'var(--text-muted)',
+                        lineHeight: '1.6',
+                        textAlign: 'left'
+                      }}>
+                        {verseData[i].translation}
+                      </div>
                     </div>
                   )}
                 </div>
