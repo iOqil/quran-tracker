@@ -8,8 +8,11 @@ const originalFetch = window.fetch;
 window.fetch = async function(...args) {
   let [resource, config] = args;
   if (typeof resource === 'string' && resource.startsWith('/api')) {
-    // Agar VITE_API_URL berilmagan bo'lsa (veb versiya), o'zi turgan domendan oladi
-    const baseUrl = import.meta.env.VITE_API_URL || '';
+    // Agar ilova Capacitor (Android/iOS) ichida ishlayotgan bo'lsa va VITE_API_URL yo'q bo'lsa,
+    // to'g'ridan-to'g'ri backend IP manzilingizga ulanadi. Veb-saytda esa oddiy ishlayveradi.
+    const isCapacitor = !!(window as any).Capacitor;
+    const fallbackUrl = isCapacitor ? 'http://37.60.238.251:5000' : '';
+    const baseUrl = import.meta.env.VITE_API_URL || fallbackUrl;
     resource = baseUrl + resource;
   }
   return originalFetch(resource, config as RequestInit);
