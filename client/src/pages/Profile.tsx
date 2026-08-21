@@ -155,7 +155,7 @@ export const Profile: React.FC = () => {
         </div>
 
         <div className="profile-settings-pane">
-          <form onSubmit={handleUpdateProfile} className="admin-form-layout" style={{ backgroundColor: 'white', padding: '20px', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow)' }}>
+          <form onSubmit={handleUpdateProfile} className="admin-form-layout" style={{ backgroundColor: 'var(--bg-card)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow)' }}>
             <h3 className="admin-form-title" style={{ marginBottom: '12px' }}>Profil Ma'lumotlarini Tahrirlash</h3>
             
             <div className="admin-form-group">

@@ -6,6 +6,8 @@
   --primary-light: #FCD3E1;
   --bg-app: #FFF7F9;
   --bg-header-rgba: rgba(255, 253, 254, 0.95);
+  --bg-gradient: linear-gradient(135deg, #FFF0F5 0%, #FFF5F7 100%);
+  --bg-auth: linear-gradient(135deg, #FFEBF2 0%, #FFF5F7 100%);
   --bg-card: #FFFFFF;
   --text-main: #3C2E3D;
   --text-muted: #8E7A8F;
@@ -27,6 +29,8 @@
   --bg-app: #120e13;
   --bg-card: #1c151c;
   --bg-header-rgba: rgba(18, 14, 19, 0.95);
+  --bg-gradient: linear-gradient(135deg, #2a1620 0%, #1c151c 100%);
+  --bg-auth: linear-gradient(135deg, #301723 0%, #1c151c 100%);
   --text-main: #f0e6f2;
   --text-muted: #ab9cab;
   --text-primary: #f0e6f2;
@@ -734,7 +738,7 @@ body {
 }
 
 .achievement-card {
-  background: linear-gradient(135deg, #FFF0F5 0%, #FFF5F7 100%);
+  background: var(--bg-gradient);
   border-radius: 20px;
   padding: 20px;
   border: 1px solid var(--primary-light);
@@ -1065,7 +1069,7 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, #FFEBF2 0%, #FFF5F7 100%);
+  background: var(--bg-auth);
   display: flex;
   align-items: center;
   justify-content: center;

@@ -251,7 +251,7 @@ export const Reminders: React.FC = () => {
       {/* ROW 1: Kunlik Eslatmalar & Bugungi Progress */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
         {/* Left Column: Kunlik Eslatmalar */}
-        <div className="reminders-list-pane" style={{ backgroundColor: 'white', padding: '20px', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div className="reminders-list-pane" style={{ backgroundColor: 'var(--bg-card)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <h3 className="surah-section-title" style={{ margin: '0' }}>Kunlik Eslatmalar</h3>
           <div className="reminders-flex-list" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {reminders.map((rem) => (
@@ -313,7 +313,7 @@ export const Reminders: React.FC = () => {
         {/* Right Column: Bugungi Progress / Actionable Sessions */}
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           {hasActionable ? (
-            <div className="actionable-sessions-panel" style={{ backgroundColor: '#fff0f3', padding: '20px', borderRadius: '16px', border: '1px solid var(--primary-light)', boxShadow: 'var(--shadow)', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div className="actionable-sessions-panel" style={{ backgroundColor: 'var(--bg-app)', padding: '20px', borderRadius: '16px', border: '1px solid var(--primary-light)', boxShadow: 'var(--shadow)', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <h3 className="surah-section-title" style={{ margin: '0', display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--primary-dark)' }}>
                 <AlertCircle size={18} /> Bugungi Progress
               </h3>
@@ -323,7 +323,7 @@ export const Reminders: React.FC = () => {
                   if (actionable.length === 0) return null;
                   
                   return actionable.map(session => (
-                    <div key={session.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', padding: '10px 12px', borderRadius: '8px', border: '1px solid #ffe3e9', fontSize: '13px', flexWrap: 'wrap', gap: '8px' }}>
+                    <div key={session.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'var(--bg-card)', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '13px', flexWrap: 'wrap', gap: '8px' }}>
                       <div>
                         <strong style={{ color: 'var(--text-primary)' }}>{plan.surah.name}</strong> 
                         <span style={{ color: 'var(--text-muted)', marginLeft: '6px' }}>
@@ -356,7 +356,7 @@ export const Reminders: React.FC = () => {
       </div>
 
       {/* ROW 2: Takrorlash Rejasi Yaratish Form (Full Width) */}
-      <div className="repetition-form-row" style={{ backgroundColor: 'white', padding: '20px', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow)' }}>
+      <div className="repetition-form-row" style={{ backgroundColor: 'var(--bg-card)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow)' }}>
         <h3 className="surah-section-title" style={{ margin: '0 0 16px 0' }}>Takrorlash rejasi</h3>
         
         <form onSubmit={handleCreateRepetitionPlan} className="add-todo-form" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -454,7 +454,7 @@ export const Reminders: React.FC = () => {
               const uniqueDates = Object.keys(groupedByDate).sort();
 
               return (
-                <div key={plan.id} className="repetition-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '10px', backgroundColor: 'white', padding: '20px', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow)', margin: 0 }}>
+                <div key={plan.id} className="repetition-card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '10px', backgroundColor: 'var(--bg-card)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow)', margin: 0 }}>
                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                      <div>
                        <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--primary-dark)', display: 'block' }}>{plan.surah.name}</span>
